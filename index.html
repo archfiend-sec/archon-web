@@ -2,150 +2,158 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Archon Intelligence v6</title>
+    <title>Archon Intelligence v7</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        :root { --neon: #00ff41; --danger: #ff3e3e; --pink: #ff00f3; --bg: #000; --dim: rgba(0, 255, 65, 0.15); }
-        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; height: 100%; overflow-x: hidden; }
+        :root { --neon: #00ff41; --danger: #ff2a2a; --bg: #000; --panel: rgba(5, 5, 5, 0.9); }
+        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; height: 100%; overflow: hidden; }
 
-        /* Animated Grid Background */
-        .grid-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(var(--dim) 1px, transparent 1px), linear-gradient(90deg, var(--dim) 1px, transparent 1px); background-size: 50px 50px; z-index: -1; animation: move 30s linear infinite; }
-        @keyframes move { from { background-position: 0 0; } to { background-position: 0 1000px; } }
+        /* Canvas for Particle Background */
+        #particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
 
-        /* Auth Screen */
-        #auth-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .core-btn { width: 100px; height: 100px; border: 2px solid var(--neon); border-radius: 50%; box-shadow: 0 0 20px var(--neon); display: flex; align-items: center; justify-content: center; cursor: pointer; animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 15px var(--neon); } 50% { transform: scale(1.05); box-shadow: 0 0 45px var(--neon); } }
+        /* Glitch Effects */
+        .glitch-header { text-align: center; font-size: 1.5rem; font-weight: bold; letter-spacing: 6px; padding: 20px; text-transform: uppercase; text-shadow: 2px 0 #f0f, -2px 0 #0ff; animation: glitch 3s infinite; }
+        @keyframes glitch { 0% { transform: skew(0deg); } 10% { transform: skew(-5deg); } 15% { transform: skew(5deg); } 100% { transform: skew(0deg); } }
 
-        /* Main UI */
-        .container { padding: 15px; display: none; opacity: 0; transition: 1.5s opacity; }
-        .glitch { font-size: 1.4rem; font-weight: bold; text-align: center; letter-spacing: 5px; text-shadow: 2px 0 var(--pink), -2px 0 #0ff; animation: glitch-anim 2s infinite; }
-        @keyframes glitch-anim { 0% { transform: skew(0deg); } 20% { transform: skew(5deg); } 40% { transform: skew(-5deg); } 100% { transform: skew(0deg); } }
-
-        #map { height: 180px; border: 1px solid var(--neon); margin: 15px 0; filter: invert(1) hue-rotate(180deg) brightness(0.8); border-radius: 10px; box-shadow: 0 0 10px var(--dim); }
-        .terminal { background: rgba(0,15,0,0.9); border: 1px solid #222; padding: 10px; font-size: 11px; height: 120px; overflow-y: auto; color: var(--neon); border-radius: 5px; }
+        /* HUD Panels */
+        .hud-container { padding: 15px; height: 100vh; box-sizing: border-box; display: none; flex-direction: column; opacity: 0; transition: 2s opacity; }
+        #map { height: 160px; border: 1px solid var(--neon); border-radius: 12px; margin-bottom: 15px; filter: invert(1) hue-rotate(180deg) brightness(0.7); box-shadow: 0 0 15px rgba(0,255,65,0.2); }
         
-        .card { background: rgba(10,10,10,0.95); border: 1px solid #333; padding: 12px; border-left: 4px solid var(--neon); margin-top: 15px; opacity: 0; transform: translateY(10px); transition: 0.6s all; }
-        .card.active { opacity: 1; transform: translateY(0); }
+        .terminal-box { background: var(--panel); border: 1px solid #222; padding: 10px; font-size: 11px; flex-grow: 1; overflow-y: auto; color: var(--neon); box-shadow: inset 0 0 10px #000; border-radius: 5px; margin-bottom: 10px; }
+        .data-card { background: rgba(10,10,10,0.95); border: 1px solid #333; padding: 15px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid var(--neon); animation: fadeInUp 0.8s forwards; opacity: 0; }
+        @keyframes fadeInUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        /* Admin Console */
-        #admin-panel { border-color: var(--pink); border-left-color: var(--pink); display: none; margin-top: 25px; }
-        .admin-input { background: #000; color: var(--pink); border: 1px solid var(--pink); padding: 10px; width: 60%; font-family: monospace; border-radius: 4px; }
-        .admin-btn { background: var(--pink); border: none; color: #000; padding: 10px 15px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        /* Authorization Core */
+        #auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .dna-spinner { width: 100px; height: 100px; border: 2px solid var(--neon); border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; cursor: pointer; box-shadow: 0 0 20px var(--neon); display: flex; align-items: center; justify-content: center; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div class="grid-bg"></div>
-
-    <div id="auth-screen">
-        <div class="glitch" style="margin-bottom: 50px;">ARCHON_LOGIN</div>
-        <div class="core-btn" onclick="authorize()">
-            <svg width="45" height="45" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v10m6.36-5.36a9 9 0 1 1-12.73 0"/></svg>
+    <canvas id="particles"></canvas>
+    
+    <div id="auth-overlay">
+        <div class="glitch-header">ARCHON_V7_SYNC</div>
+        <div class="dna-spinner" onclick="engageUplink()">
+            <div style="width: 20px; height: 20px; background: var(--neon); border-radius: 50%;"></div>
         </div>
-        <p style="margin-top: 30px; font-size: 10px; opacity: 0.6; letter-spacing: 4px;">INITIALIZE ARCHON UPLINK</p>
+        <p style="margin-top: 30px; font-size: 10px; letter-spacing: 5px; opacity: 0.7;">TAP CORE TO INITIALIZE</p>
     </div>
 
-    <div class="container" id="main-ui">
-        <div class="glitch">ARCHON_INTELLIGENCE_v6</div>
+    <div class="hud-container" id="hud">
+        <div class="glitch-header">ARCHON_INTELLIGENCE</div>
         <div id="map"></div>
-        <div class="terminal" id="logs"></div>
-        <div id="results"></div>
-
-        <div class="card" id="admin-panel">
-            <h4 style="color:var(--pink); margin:0 0 12px 0;">[ COMMAND_OVERRIDE: ADD_ADMIN ]</h4>
-            <input type="number" id="new-id" class="admin-input" placeholder="Telegram UserID">
-            <button class="admin-btn" onclick="grantAccess()">AUTHORIZE</button>
-            <div id="admin-status" style="font-size:10px; margin-top:10px; color:var(--pink);"></div>
-        </div>
+        <div class="terminal-box" id="logs"></div>
+        <div id="payload-stream"></div>
     </div>
 
     <script>
+        // --- 🧪 PARTICLE SYSTEM ---
+        const canvas = document.getElementById('particles');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        let particles = [];
+        class Particle {
+            constructor() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.v = Math.random()*0.5 + 0.2; }
+            draw() { ctx.fillStyle = 'rgba(0, 255, 65, 0.5)'; ctx.beginPath(); ctx.arc(this.x, this.y, 1, 0, Math.PI*2); ctx.fill(); this.y -= this.v; if(this.y < 0) this.y = canvas.height; }
+        }
+        for(let i=0; i<100; i++) particles.push(new Particle());
+        function anim() { ctx.clearRect(0,0,canvas.width,canvas.height); particles.forEach(p => p.draw()); requestAnimationFrame(anim); }
+        anim();
+
+        // --- 📡 CORE LOGIC ---
         let tg = window.Telegram.WebApp; tg.expand();
-        const p = new URLSearchParams(window.location.search);
-        const target = p.get('target'), type = p.get('type'), uid = p.get('uid');
+        const params = new URLSearchParams(window.location.search);
+        const target = params.get('target'), type = params.get('type'), uid = params.get('uid');
+        
+        // ⚠️ AUTO-FIXED BACKEND LINK ⚠️
         const BACKEND = "https://archon-intelligence-backend.onrender.com";
-        const MASTER_ID = "8312795263"; // <--- MUST MATCH MASTER_ID IN PYTHON
 
         const audio = new (window.AudioContext || window.webkitAudioContext)();
-        function beep(f, d, t='square') {
+        function play(f, d, t='square') {
             const o = audio.createOscillator(); const g = audio.createGain();
             o.type = t; o.frequency.value = f; o.connect(g); g.connect(audio.destination);
             g.gain.setValueAtTime(0.05, audio.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + d);
             o.start(); o.stop(audio.currentTime + d);
         }
 
-        function log(m) {
+        function log(msg, color="var(--neon)") {
             const l = document.getElementById('logs');
-            const d = document.createElement('div'); d.innerHTML = `> ${m}`;
+            const d = document.createElement('div');
+            d.innerHTML = `> [${new Date().toLocaleTimeString()}] ${msg}`;
+            d.style.color = color;
             l.appendChild(d); l.scrollTop = l.scrollHeight;
-            beep(800, 0.05);
+            play(1000, 0.05);
         }
 
-        async function authorize() {
+        async function engageUplink() {
             if(audio.state === 'suspended') audio.resume();
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('main-ui').style.display = 'block';
-            document.getElementById('main-ui').style.opacity = '1';
+            document.getElementById('auth-overlay').style.display = 'none';
+            document.getElementById('hud').style.display = 'flex';
+            setTimeout(() => document.getElementById('hud').style.opacity = '1', 100);
             
-            if(uid === MASTER_ID) document.getElementById('admin-panel').style.display = 'block';
-
-            log("HANDSHAKE ESTABLISHED WITH ARCHON CORE.");
+            log("INITIATING SECURE HANDSHAKE...");
             log(`TARGET ACQUIRED: ${target}`);
-            startScan();
+            log(`MODE: ${type.toUpperCase()}_RECON`);
+            
+            fetchData();
         }
 
-        async function startScan() {
+        async function fetchData() {
             try {
+                log("UPLINKING TO ARCHON_MAINFRAME...");
                 const response = await fetch(`${BACKEND}/api/scan?target=${encodeURIComponent(target)}&type=${type}&uid=${uid}`);
+                
+                if(!response.ok) throw new Error(`HTTP_${response.status}`);
+                
                 const data = await response.json();
+                log("DECRYPTION_SUCCESSFUL. EXTRACTING PAYLOAD...");
 
-                if(data.error) { log(`CORE ERROR: ${data.error}`); return; }
-
+                // 🗺️ Map Sync
                 if(data.geo) {
-                    let lat = data.geo.lat || 0, lon = data.geo.lon || 0;
-                    let m = L.map('map', {zoomControl: false, attributionControl: false}).setView([lat, lon], 11);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m);
-                    L.circle([lat, lon], {radius: 3500, color: '#00ff41'}).addTo(m);
-                    log(`LOCATION PINPOINTED: ${data.geo.city || 'EXTERNAL_NODE'}`);
+                    let lat = data.geo.lat || 20, lon = data.geo.lon || 77;
+                    let map = L.map('map', {zoomControl: false, attributionControl: false}).setView([lat, lon], 11);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                    L.circle([lat, lon], {radius: 4000, color: '#00ff41', fillOpacity: 0.2}).addTo(map);
+                    log(`LOCATION_PINPOINTED: ${data.geo.city || 'REGION_SECURE'}`);
                 }
 
-                showData(data);
-            } catch (e) { log("CRITICAL: ARCHON OFFLINE."); }
+                renderData(data);
+            } catch (e) {
+                log(`CRITICAL: ARCHON_OFFLINE (${e.message})`, "var(--danger)");
+                log("CHECK RENDER DASHBOARD / LOGS.", "var(--danger)");
+                play(200, 0.5, 'sawtooth');
+            }
         }
 
-        function showData(data) {
-            const res = document.getElementById('results');
+        function renderData(data) {
+            const stream = document.getElementById('payload-stream');
+            
             if(data.social) {
-                let c = createCard("IDENTITY_INTEL");
-                c.innerHTML += `STATUS: ${data.social.reputation.toUpperCase()}<br>`;
-                if(data.social.sources) c.innerHTML += `<small>${data.social.sources.join(' | ')}</small>`;
-                res.appendChild(c); setTimeout(() => c.classList.add('active'), 200);
+                const c = createCard("IDENTITY_PROFILE");
+                c.innerHTML += `<div style="font-size:12px;">Reputation: ${data.social.reputation.toUpperCase()}</div>`;
+                if(data.social.sources) c.innerHTML += `<div style="font-size:10px; margin-top:5px;">Sources: ${data.social.sources.join(' | ')}</div>`;
+                stream.appendChild(c);
             }
+
             if(data.leaks && data.leaks.result) {
-                let c = createCard("BREACH_ALERTS", "#ff3e3e");
-                data.leaks.result.slice(0, 5).forEach(l => c.innerHTML += `<div style="font-size:10px;">[!] ${l.line}</div>`);
-                res.appendChild(c); setTimeout(() => c.classList.add('active'), 500);
-                beep(200, 0.4, 'sine');
+                const c = createCard("BREACH_INTELLIGENCE", "var(--danger)");
+                data.leaks.result.slice(0,6).forEach(l => {
+                    c.innerHTML += `<div style="font-size:10px; border-bottom: 1px solid #222; padding:3px 0;">[!] ${l.line}</div>`;
+                });
+                stream.appendChild(c);
+                play(150, 0.4, 'sine');
             }
-            log("DATA STREAM COMPLETED.");
+            log("UPLINK_COMPLETE. STANDING BY.");
         }
 
-        function createCard(title, color="#00ff41") {
-            const d = document.createElement('div'); d.className = 'card'; d.style.borderLeftColor = color;
-            d.innerHTML = `<h5 style="margin:0 0 10px 0; color:${color}">[ ${title} ]</h5>`;
+        function createCard(title, color="var(--neon)") {
+            const d = document.createElement('div');
+            d.className = 'data-card'; d.style.borderLeftColor = color;
+            d.innerHTML = `<h4 style="margin:0 0 10px 0; font-size:12px; color:${color}">[ ${title} ]</h4>`;
             return d;
-        }
-
-        async function grantAccess() {
-            const nid = document.getElementById('new-id').value;
-            const status = document.getElementById('admin-status');
-            status.innerText = "> SYNCING NEW PERMISSIONS...";
-            const r = await fetch(`${BACKEND}/api/add_admin?uid=${uid}&new_id=${nid}`);
-            const d = await r.json();
-            status.innerText = d.status === "SUCCESS" ? `> USER_${nid}_AUTHORIZED` : `> ${d.error}`;
-            beep(1000, 0.2);
         }
     </script>
 </body>
