@@ -3,128 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Archon Terminal Pro</title>
+    <title>Archon Terminal Supreme</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; background-color: #030303; color: #1DB954; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
+        :root { --bg: #050505; --accent: #1DB954; --danger: #ff2a2a; --panel: rgba(20, 20, 20, 0.8); }
+        body { margin: 0; padding: 20px; background-color: var(--bg); color: var(--accent); font-family: 'Courier New', monospace; overflow-x: hidden; }
         
-        /* Background Effects */
-        canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; opacity: 0.2; }
-        .crt::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none; }
+        /* Layout & Glassmorphism Panels */
+        .grid-container { display: grid; grid-template-columns: 1fr; gap: 20px; max-width: 800px; margin: 0 auto; }
+        .panel { background: var(--panel); border: 1px solid #333; border-radius: 8px; padding: 20px; box-shadow: 0 0 20px rgba(0, 255, 0, 0.05); backdrop-filter: blur(10px); position: relative; overflow: hidden; }
+        .panel::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
         
-        /* Terminal Interface */
-        .terminal-container { position: relative; z-index: 3; padding: 30px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; background: radial-gradient(circle, transparent 20%, #000000 120%); }
-        .header { text-align: center; border-bottom: 1px solid #1DB954; padding-bottom: 15px; margin-bottom: 20px; text-shadow: 0 0 10px #1DB954; letter-spacing: 2px; }
-        .output { flex-grow: 1; overflow-y: auto; text-shadow: 0 0 5px #1DB954; font-size: 14px; line-height: 1.5; padding-right: 10px; }
+        h2, h3 { margin-top: 0; text-shadow: 0 0 10px var(--accent); text-transform: uppercase; letter-spacing: 2px; }
         
-        /* Text Styles */
-        .highlight { color: #ffffff; text-shadow: 0 0 8px #ffffff; font-weight: bold; }
-        .error { color: #ff3333; text-shadow: 0 0 8px #ff3333; }
-        .typing-cursor::after { content: '█'; animation: blink 1s step-start infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
+        /* Interactive Radar */
+        .radar-container { width: 150px; height: 150px; border-radius: 50%; border: 2px solid var(--accent); margin: 0 auto 20px auto; position: relative; overflow: hidden; box-shadow: 0 0 30px rgba(29, 185, 84, 0.2); }
+        .radar-container::after { content: ''; position: absolute; top: 50%; left: 50%; width: 50%; height: 50%; background: linear-gradient(45deg, rgba(29, 185, 84, 0.8) 0%, transparent 50%); transform-origin: 0 0; animation: spin 2s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Progress Bars */
+        .progress-box { margin-bottom: 15px; }
+        .progress-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+        .progress-bar-bg { width: 100%; height: 10px; background: #222; border-radius: 5px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.5s ease; box-shadow: 0 0 10px var(--accent); }
+        
+        /* Data Output */
+        .data-row { display: flex; border-bottom: 1px solid #222; padding: 10px 0; }
+        .data-label { width: 40%; opacity: 0.7; font-size: 14px; }
+        .data-value { width: 60%; font-weight: bold; font-size: 14px; word-break: break-all; }
+        
+        .sys-log { font-size: 12px; color: #888; margin-top: 20px; border-top: 1px dashed #333; padding-top: 10px; height: 100px; overflow-y: auto; }
     </style>
 </head>
-<body class="crt">
-    <canvas id="matrix"></canvas>
-    
-    <div class="terminal-container">
-        <div class="header">
-            <h2>[ ARCHON INTELLIGENCE v4.0 ]</h2>
-            <small>SECURE OSINT UPLINK ESTABLISHED</small>
+<body>
+    <div class="grid-container">
+        
+        <div class="panel" style="text-align: center;">
+            <h2>ARCHON NODE: SECURE</h2>
+            <div class="radar-container" id="radar"></div>
+            <div id="target-id" style="font-size: 18px; font-weight: bold; color: #fff; text-shadow: 0 0 10px #fff;">AWAITING TARGET...</div>
         </div>
-        <div id="output" class="output"></div>
+
+        <div class="panel" id="decryption-panel">
+            <h3>DECRYPTION PROTOCOL</h3>
+            <div class="progress-box">
+                <div class="progress-label"><span>Bypassing Proxy Nodes</span><span id="prog-1-txt">0%</span></div>
+                <div class="progress-bar-bg"><div class="progress-bar-fill" id="prog-1"></div></div>
+            </div>
+            <div class="progress-box">
+                <div class="progress-label"><span>Extracting Deep Packets</span><span id="prog-2-txt">0%</span></div>
+                <div class="progress-bar-bg"><div class="progress-bar-fill" id="prog-2"></div></div>
+            </div>
+        </div>
+
+        <div class="panel" id="data-panel" style="display: none;">
+            <h3>INTELLIGENCE PAYLOAD</h3>
+            <div id="payload-content"></div>
+        </div>
+        
+        <div class="panel">
+            <h3>SYSTEM LOGS</h3>
+            <div class="sys-log" id="sys-log">
+                <div>> System initialized.</div>
+            </div>
+        </div>
+
     </div>
 
     <script>
-        // --- VISUAL: MATRIX RAIN BACKGROUND ---
-        const canvas = document.getElementById('matrix');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        const letters = '01ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%^&*'.split('');
-        const fontSize = 14; 
-        const columns = canvas.width / fontSize;
-        const drops = []; for(let x = 0; x < columns; x++) drops[x] = 1;
-        
-        setInterval(() => {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#1DB954'; ctx.font = fontSize + 'px monospace';
-            for(let i = 0; i < drops.length; i++) {
-                const text = letters[Math.floor(Math.random() * letters.length)];
-                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-                if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-                drops[i]++;
-            }
-        }, 33);
+        // --- AUDIO SYNTHESIS ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playBeep(freq, duration, vol=0.1) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square'; osc.frequency.value = freq;
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
+        }
 
-        // --- CORE: OSINT LOGIC ---
+        const logBox = document.getElementById('sys-log');
+        function logMsg(msg, isError=false) {
+            const div = document.createElement('div');
+            div.innerHTML = `> ${msg}`;
+            if(isError) div.style.color = 'var(--danger)';
+            logBox.appendChild(div);
+            logBox.scrollTop = logBox.scrollHeight;
+            if(!isError) playBeep(800, 0.1); else playBeep(200, 0.5, 0.3);
+        }
+
+        async function animateProgress(barId, txtId, duration) {
+            const bar = document.getElementById(barId);
+            const txt = document.getElementById(txtId);
+            return new Promise(resolve => {
+                let start = null;
+                function step(timestamp) {
+                    if (!start) start = timestamp;
+                    let progress = timestamp - start;
+                    let percent = Math.min((progress / duration) * 100, 100);
+                    bar.style.width = percent + '%';
+                    txt.innerText = Math.floor(percent) + '%';
+                    if (percent < 100) { window.requestAnimationFrame(step); }
+                    else { resolve(); }
+                }
+                window.requestAnimationFrame(step);
+            });
+        }
+
         let tg = window.Telegram.WebApp; tg.expand();
         const params = new URLSearchParams(window.location.search);
         let target = params.get('target');
         const type = params.get('type');
         const uid = params.get('uid');
-        const output = document.getElementById('output');
-
-        // Fix the Telegram "Plus Sign" Bug
-        if (target && type === 'phone' && !target.startsWith('+')) {
-            target = '+' + target.trim(); 
-        }
-
-        // ⚠️ RENDER LINK GOES HERE ⚠️
-        const BACKEND_URL = "https://archon-intelligence-backend.onrender.com";
-
-
-        async function typeText(text, delay = 25, className = '') {
-            const p = document.createElement('div');
-            if (className) p.className = className;
-            output.appendChild(p);
-            
-            p.classList.add('typing-cursor');
-            for (let i = 0; i < text.length; i++) {
-                p.innerHTML = text.substring(0, i + 1);
-                await new Promise(r => setTimeout(r, delay));
-            }
-            p.classList.remove('typing-cursor');
-            output.scrollTop = output.scrollHeight;
-        }
+        
+        // ⚠️ YOUR RENDER LINK GOES HERE ⚠️
+        const BACKEND_URL = "https://archon-intelligence-backend.onrender.com"; 
 
         async function executeHack() {
-            if(!target || !uid) { await typeText("> ACCESS DENIED. UNAUTHORIZED USER.", 50, "error"); return; }
-            
-            // Simulated hacking delay for cinematic effect
-            await typeText("> INITIALIZING ARCHON DATABANKS...");
-            await typeText(`> TARGET LOCKED: ${target}`, 40, "highlight");
-            await typeText(`> EXECUTING PROTOCOL: ${type.toUpperCase()}_SCAN`);
-            await typeText("> BYPASSING REGIONAL FIREWALLS...");
-            await new Promise(r => setTimeout(r, 800)); 
+            if(!target) { logMsg("ERROR: No target specified.", true); return; }
+            if (type === 'phone' && !target.startsWith('+')) target = '+' + target.trim();
+
+            document.getElementById('target-id').innerText = target;
+            logMsg(`Target locked: ${target}`);
+            logMsg(`Initiating ${type.toUpperCase()}_SCAN`);
+
+            // Start fake visual hacking animations
+            let progressTask = Promise.all([
+                animateProgress('prog-1', 'prog-1-txt', 2000),
+                new Promise(r => setTimeout(() => { animateProgress('prog-2', 'prog-2-txt', 2500).then(r); }, 1000))
+            ]);
 
             try {
                 const response = await fetch(`${BACKEND_URL}/api/scan?target=${encodeURIComponent(target)}&type=${type}&uid=${uid}`);
                 const data = await response.json();
+                await progressTask; // Wait for UI bars to finish looking cool
 
-                if(data.error) { await typeText(`> ERROR: ${data.error}`, 50, "error"); return; }
+                document.getElementById('radar').style.borderColor = 'white'; // Turn off radar
+                document.getElementById('decryption-panel').style.display = 'none';
+                document.getElementById('data-panel').style.display = 'block';
+                const payload = document.getElementById('payload-content');
 
-                await typeText(`\n> DECRYPTION SUCCESSFUL. COMPILING DATA...\n`, 40, "highlight");
-                
-                if(type === 'email') {
-                    if(data.socials.length === 0) { await typeText("> STATUS: GHOST. NO LINKED PLATFORMS FOUND."); }
-                    else {
-                        await typeText("> IDENTIFIED ACCOUNTS:");
-                        for(let s of data.socials) { await typeText(`  [+] ${s}`, 20); }
-                    }
-                } else {
-                    await typeText(`> GEO-LOCATION: ${data.location || 'UNKNOWN'}`);
-                    await typeText(`> NETWORK CARRIER: ${data.carrier || 'UNKNOWN'}`);
+                if(data.error) { 
+                    logMsg(`CRITICAL: ${data.error}`, true); 
+                    payload.innerHTML = `<p style="color:var(--danger)">${data.error}</p>`;
+                    return; 
                 }
-                
-                await typeText(`\n> OPERATION CONCLUDED. WAITING FOR NEXT TARGET...`);
+
+                playBeep(1200, 0.3); playBeep(1500, 0.3); // Success chime
+                logMsg(`Decryption successful.`);
+
+                let html = '';
+                if(type === 'email') {
+                    if(data.socials.length === 0) html = '<p>No attached accounts found.</p>';
+                    else data.socials.forEach(s => html += `<div class="data-row"><div class="data-label">ACCOUNT</div><div class="data-value">${s}</div></div>`);
+                } else if (type === 'phone') {
+                    html += `<div class="data-row"><div class="data-label">REGION</div><div class="data-value">${data.location || 'Unknown'}</div></div>`;
+                    html += `<div class="data-row"><div class="data-label">CARRIER</div><div class="data-value">${data.carrier || 'Unknown'}</div></div>`;
+                } else if (type === 'ip') {
+                    html += `<div class="data-row"><div class="data-label">ISP</div><div class="data-value">${data.isp}</div></div>`;
+                    html += `<div class="data-row"><div class="data-label">LOCATION</div><div class="data-value">${data.city}, ${data.country}</div></div>`;
+                    html += `<div class="data-row"><div class="data-label">COORDINATES</div><div class="data-value">${data.lat}, ${data.lon}</div></div>`;
+                }
+                payload.innerHTML = html;
+
             } catch (e) {
-                await typeText(`\n> CRITICAL FAILURE: API MAINFRAME OFFLINE`, 50, "error");
-                await typeText(`> CHECK SERVER STATUS.`, 50, "error");
+                await progressTask;
+                logMsg("SERVER CONNECTION FAILED.", true);
             }
         }
 
-        executeHack();
+        // Tap anywhere to start (required for audio context to unlock in mobile browsers)
+        document.body.addEventListener('click', () => {
+            if(document.getElementById('target-id').innerText === "AWAITING TARGET...") {
+                playBeep(400, 0.1);
+                executeHack();
+            }
+        }, {once: true});
     </script>
 </body>
 </html>
