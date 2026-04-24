@@ -2,126 +2,230 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Archon V11: OMNI-NET</title>
+    <title>Archon Intelligence</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --neon: #00ff41; --danger: #ff003c; --bg: #020202; }
-        body { margin:0; padding:0; background:var(--bg); color:var(--neon); font-family:'Courier New', monospace; overflow-x:hidden; }
+        :root { --neon: #00ff41; --danger: #ff003c; --bg: #020202; --panel: rgba(10, 15, 10, 0.85); }
+        body { margin:0; padding:0; background:var(--bg); color:var(--neon); font-family:'Courier New', monospace; overflow-x:hidden; user-select:none; }
         
+        /* Interactive Canvas Background */
+        #network-canvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity: 0.4; }
         .scanlines { position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.2) 50%); background-size:100% 4px; pointer-events:none; z-index:100; }
         
-        .header { text-align:center; padding:20px; border-bottom:1px solid #222; background:rgba(5,5,5,0.9); box-shadow: 0 0 20px rgba(0,255,65,0.05); }
+        .header { text-align:center; padding:20px; border-bottom:1px solid #222; background:rgba(2,2,2,0.9); position:relative; z-index:10; }
         .glitch { font-size:1.5rem; font-weight:bold; letter-spacing:4px; text-shadow:2px 0 red, -2px 0 blue; animation: g 3s infinite; }
-        @keyframes g { 0%, 100% { transform:skew(0); opacity:1; } 5% { transform:skew(-10deg); opacity:0.8; } 10% { transform:skew(10deg); } }
+        @keyframes g { 0%, 100% { transform:skew(0); opacity:1; } 5% { transform:skew(-5deg); opacity:0.8; } 10% { transform:skew(5deg); } }
 
-        .terminal { background:#050505; border:1px solid #111; margin:15px; padding:15px; font-size:11px; height:100px; overflow-y:auto; color:#00ff41; box-shadow: inset 0 0 10px #000; }
+        .terminal { background:#050505; border:1px solid #111; margin:15px; padding:15px; font-size:11px; height:120px; overflow-y:auto; color:#00ff41; box-shadow: inset 0 0 15px #000; border-radius: 4px; }
         
-        .module { background:#0a0a0a; border:1px solid #1a1a1a; border-left:3px solid var(--neon); margin:15px; padding:15px; opacity:0; transform:translateX(-20px); transition:0.5s; position: relative; overflow: hidden;}
-        .module::before { content:""; position:absolute; top:0; left:-100%; width:50%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,255,65,0.1), transparent); animation: sweep 3s infinite; }
-        @keyframes sweep { 100% { left:200%; } }
-        .module.show { opacity:1; transform:translateX(0); }
+        .module { background:var(--panel); border:1px solid #1a1a1a; border-left:3px solid var(--neon); margin:15px; padding:15px; opacity:0; transform:scale(0.95); transition:0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-radius: 0 8px 8px 0; box-shadow: 0 5px 15px rgba(0,255,65,0.05);}
+        .module.show { opacity:1; transform:scale(1); }
         
-        .data-row { border-bottom:1px dashed #222; padding:8px 0; font-size:12px; display:flex; justify-content:space-between; }
-        .lbl { color:#666; font-weight: bold;}
+        /* Interactive Rows */
+        .data-row { border-bottom:1px dashed #222; padding:10px 0; font-size:12px; display:flex; justify-content:space-between; cursor:pointer; transition:0.2s; position:relative; overflow:hidden;}
+        .data-row:hover { background:rgba(0, 255, 65, 0.1); padding-left:5px; }
+        .data-row:active { background:var(--neon); color:#000; }
+        .lbl { color:#555; font-weight: bold; pointer-events:none;}
+        .val { font-weight: bold; text-align: right; word-break: break-all; max-width: 65%; pointer-events:none;}
 
-        .profile-pic { width: 90px; height: 90px; border-radius: 4px; border: 1px solid var(--neon); display: block; margin: 10px auto; filter: contrast(1.2) grayscale(0.2); }
+        .profile-pic { width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--neon); display: block; margin: 10px auto; filter: contrast(1.2) sepia(1) hue-rotate(80deg); box-shadow: 0 0 15px var(--neon); animation: float 3s ease-in-out infinite;}
+        @keyframes float { 0%,100% {transform:translateY(0);} 50% {transform:translateY(-5px);} }
 
-        .btn { display:block; text-align:center; border:1px solid var(--neon); padding:12px; margin-top:15px; color:var(--neon); font-size:12px; cursor:pointer; font-weight:bold; background: rgba(0,255,65,0.05);}
-        .btn:active { background:var(--neon); color:#000; }
+        .btn { display:block; text-align:center; border:1px solid var(--neon); padding:12px; margin-top:15px; color:var(--neon); font-size:12px; cursor:pointer; font-weight:bold; background: rgba(0,255,65,0.05); transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;}
+        .btn:hover { background: rgba(0,255,65,0.2); box-shadow: 0 0 10px var(--neon); }
+        .btn:active { background:var(--neon); color:#000; transform: scale(0.98); }
         
-        #auth { position:fixed; top:0; left:0; width:100%; height:100%; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; }
-        .core { width:80px; height:80px; border:2px dashed var(--neon); border-radius:50%; display:flex; align-items:center; justify-content:center; animation:spin 5s linear infinite; cursor: pointer;}
+        #auth { position:fixed; top:0; left:0; width:100%; height:100%; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; backdrop-filter: blur(5px);}
+        .core { width:90px; height:90px; border:2px dashed var(--neon); border-radius:50%; display:flex; align-items:center; justify-content:center; animation:spin 6s linear infinite; cursor: pointer; transition: 0.3s;}
+        .core:hover { transform: scale(1.1); box-shadow: 0 0 30px var(--neon); }
         @keyframes spin { 100% { transform:rotate(360deg); } }
+        
+        /* Radar Element */
+        .radar { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--neon); position: relative; margin: 0 auto 10px auto; overflow: hidden; }
+        .radar::before { content: ''; position: absolute; top: 50%; left: 50%; width: 50%; height: 50%; background: linear-gradient(45deg, transparent 50%, rgba(0,255,65,0.5) 100%); transform-origin: 0% 0%; animation: radar 2s linear infinite; }
+        @keyframes radar { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="scanlines">
+    <canvas id="network-canvas"></canvas>
 
-    <div id="auth" onclick="start()">
-        <div class="glitch" style="margin-bottom:40px;">OMNI_NET_V11</div>
-        <div class="core"><div style="width:20px; height:20px; background:var(--neon); border-radius:50%; box-shadow: 0 0 20px var(--neon);"></div></div>
-        <div style="font-size:10px; margin-top:30px; letter-spacing:4px; opacity:0.7;">AUTHORIZE UPLINK</div>
+    <div id="auth" onclick="initiateSequence()">
+        <div class="glitch" style="margin-bottom:50px;">ARCHON_INTELLIGENCE</div>
+        <div class="core"><div style="width:25px; height:25px; background:var(--neon); border-radius:50%; box-shadow: 0 0 20px var(--neon); animation: pulse 1s infinite;"></div></div>
+        <div style="font-size:11px; margin-top:40px; letter-spacing:5px; opacity:0.8;">TAP TO AUTHORIZE</div>
     </div>
 
-    <div class="header">
-        <div class="glitch">ARCHON_OMNI_NET</div>
-        <div style="font-size:9px; color:#555; margin-top:8px; letter-spacing: 2px;">PROTOCOL: ACTIVE_RECON</div>
+    <div class="header" id="main-header" style="display:none;">
+        <div class="radar"></div>
+        <div class="glitch">ARCHON_INTELLIGENCE</div>
+        <div style="font-size:9px; color:#555; margin-top:8px; letter-spacing: 2px;" id="target-display">AWAITING TARGET</div>
     </div>
 
-    <div class="terminal" id="logs"></div>
+    <div class="terminal" id="logs" style="display:none;"></div>
     <div id="dashboard"></div>
 
     <script>
-        let tg = window.Telegram.WebApp; tg.expand();
+        let tg; try { tg = window.Telegram.WebApp; tg.expand(); } catch(e) {}
         const p = new URLSearchParams(window.location.search);
         const target = p.get('target'), type = p.get('type'), uid = p.get('uid');
         const BACKEND = "https://archon-intelligence-backend.onrender.com";
+        let ctxSound;
 
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        function playSnd(f, d) {
-            const o = ctx.createOscillator(); const g = ctx.createGain();
-            o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
-            g.gain.setValueAtTime(0.1, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + d);
-            o.start(); o.stop(ctx.currentTime + d);
+        // --- INTERACTIVE BACKGROUND (PARTICLE NETWORK) ---
+        const canvas = document.getElementById('network-canvas');
+        const ctxC = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        let particlesArray = [];
+        class Particle {
+            constructor() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.size = Math.random()*2; this.speedX = (Math.random()-0.5)*0.5; this.speedY = (Math.random()-0.5)*0.5; }
+            update() { this.x += this.speedX; this.y += this.speedY; if(this.x > canvas.width || this.x < 0) this.speedX *= -1; if(this.y > canvas.height || this.y < 0) this.speedY *= -1; }
+            draw() { ctxC.fillStyle = 'rgba(0,255,65,0.5)'; ctxC.beginPath(); ctxC.arc(this.x, this.y, this.size, 0, Math.PI*2); ctxC.fill(); }
+        }
+        function initParticles() { for(let i=0; i<60; i++) particlesArray.push(new Particle()); }
+        function animateParticles() {
+            ctxC.clearRect(0,0,canvas.width,canvas.height);
+            for(let i=0; i<particlesArray.length; i++) {
+                particlesArray[i].update(); particlesArray[i].draw();
+                for(let j=i; j<particlesArray.length; j++) {
+                    const dx = particlesArray[i].x - particlesArray[j].x; const dy = particlesArray[i].y - particlesArray[j].y;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    if(distance < 80) { ctxC.beginPath(); ctxC.strokeStyle = `rgba(0,255,65,${1 - distance/80})`; ctxC.lineWidth = 0.5; ctxC.moveTo(particlesArray[i].x, particlesArray[i].y); ctxC.lineTo(particlesArray[j].x, particlesArray[j].y); ctxC.stroke(); }
+                }
+            }
+            requestAnimationFrame(animateParticles);
+        }
+        initParticles(); animateParticles();
+
+        // --- SOUND ENGINE ---
+        function playSnd(f, d, t='square') {
+            if(!ctxSound) return;
+            try {
+                const o = ctxSound.createOscillator(); const g = ctxSound.createGain();
+                o.type = t; o.frequency.value = f; o.connect(g); g.connect(ctxSound.destination);
+                g.gain.setValueAtTime(0.05, ctxSound.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, ctxSound.currentTime + d);
+                o.start(); o.stop(ctxSound.currentTime + d);
+            } catch(e) {}
         }
 
-        function log(m) {
+        // --- TYPING TERMINAL EFFECT ---
+        async function typeLog(m, color="var(--neon)") {
             const l = document.getElementById('logs');
-            l.innerHTML += `<div>> [SYS] ${m}</div>`; l.scrollTop = l.scrollHeight;
-            playSnd(1200, 0.05);
+            const d = document.createElement('div'); d.style.color = color;
+            l.appendChild(d);
+            let i = 0;
+            return new Promise(resolve => {
+                const int = setInterval(() => {
+                    d.innerHTML = `> [SYS] ${m.substring(0, i)}<span style="opacity:0.5">_</span>`;
+                    l.scrollTop = l.scrollHeight;
+                    if(i % 3 === 0) playSnd(1500, 0.02, 'sine');
+                    if(i++ >= m.length) { clearInterval(int); d.innerHTML = `> [SYS] ${m}`; resolve(); }
+                }, 15);
+            });
         }
 
-        async function start() {
-            if(ctx.state === 'suspended') ctx.resume();
-            document.getElementById('auth').style.display = 'none';
-            log(`ESTABLISHING SECURE CONNECTION...`);
-            log(`TARGET ACQUIRED: ${target}`);
+        // --- DECRYPTION TEXT EFFECT ---
+        function decryptText(element, finalString) {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*";
+            let iterations = 0;
+            const interval = setInterval(() => {
+                element.innerText = finalString.split("").map((letter, index) => {
+                    if(index < iterations) return finalString[index];
+                    return chars[Math.floor(Math.random() * chars.length)];
+                }).join("");
+                if(iterations >= finalString.length) clearInterval(interval);
+                iterations += 1/2; // Speed of decryption
+            }, 30);
+        }
+
+        // --- COPY TO CLIPBOARD INTERACTION ---
+        function copyData(element, value) {
+            if(!value || value === 'N/A') return;
+            navigator.clipboard.writeText(value);
+            const originalHTML = element.innerHTML;
+            element.innerHTML = `<span style="color:#000; width:100%; text-align:center; font-weight:bold;">[ DATA COPIED ]</span>`;
+            element.style.background = "var(--neon)";
+            playSnd(800, 0.1); playSnd(1200, 0.1);
+            setTimeout(() => { element.innerHTML = originalHTML; element.style.background = ""; }, 800);
+        }
+
+        function buildRow(label, value) {
+            const cleanVal = value || 'N/A';
+            const row = document.createElement('div'); row.className = 'data-row';
+            row.onclick = () => copyData(row, cleanVal);
+            row.innerHTML = `<span class="lbl">${label}:</span><span class="val decrypt-target" data-val="${cleanVal}">00000</span>`;
+            return row;
+        }
+
+        async function initiateSequence() {
+            try { if(!ctxSound) ctxSound = new (window.AudioContext || window.webkitAudioContext)(); if(ctxSound.state === 'suspended') ctxSound.resume(); } catch(e) {}
+            
+            document.getElementById('auth').style.opacity = '0';
+            setTimeout(() => { document.getElementById('auth').style.display = 'none'; }, 500);
+            
+            document.getElementById('main-header').style.display = 'block';
+            document.getElementById('logs').style.display = 'block';
+            document.getElementById('target-display').innerText = `TARGET: ${target}`;
+
+            await typeLog("ESTABLISHING SECURE HANDSHAKE...");
+            await typeLog(`INITIATING DEEP PACKET INSPECTION ON: ${target}`);
 
             try {
                 const res = await fetch(`${BACKEND}/api/scan?target=${encodeURIComponent(target)}&type=${type}&uid=${uid}`);
                 const data = await res.json();
                 const db = document.getElementById('dashboard');
 
-                // 1. IDENTITY MODULE
+                // 1. PRIMARY INTEL
                 let m1 = document.createElement('div'); m1.className = 'module';
-                m1.innerHTML = `<h4 style="margin:0 0 10px 0; color:var(--neon)">[ IDENTITY_RECON ]</h4>`;
+                m1.innerHTML = `<h4 style="margin:0 0 10px 0; color:var(--neon); border-bottom:1px solid #222; padding-bottom:5px;">[ PRIMARY_INTEL ]</h4>`;
                 
                 if(type === 'email') {
-                    m1.innerHTML += `<img src="${data.avatar}" class="profile-pic" onerror="this.style.display='none'">`;
-                    if(data.social) m1.innerHTML += `<div class="data-row"><span class="lbl">REPUTATION:</span><span>${data.social.reputation || 'N/A'}</span></div>`;
-                    if(data.dns && data.dns.length > 0) m1.innerHTML += `<div class="data-row"><span class="lbl">MX SERVER:</span><span style="font-size:10px;">${data.dns[0].data}</span></div>`;
+                    if(data.avatar) m1.innerHTML += `<img src="${data.avatar}" class="profile-pic" onerror="this.style.display='none'">`;
+                    m1.appendChild(buildRow('REPUTATION', data.social?.reputation));
+                    if(data.dns && data.dns.length > 0) m1.appendChild(buildRow('MX SERVER', data.dns[0].data));
                 } else if (type === 'phone') {
-                    m1.innerHTML += `<div class="data-row"><span class="lbl">REGION:</span><span>${data.network?.location || 'Unknown'}</span></div>`;
-                    m1.innerHTML += `<div class="data-row"><span class="lbl">CARRIER NODE:</span><span>${data.network?.carrier || 'Unregistered'}</span></div>`;
-                } else if (type === 'ip') {
-                    m1.innerHTML += `<div class="data-row"><span class="lbl">ISP/ASN:</span><span>${data.network?.isp || 'Unknown'}</span></div>`;
-                    m1.innerHTML += `<div class="data-row"><span class="lbl">CITY:</span><span>${data.network?.city || 'Unknown'}</span></div>`;
+                    m1.appendChild(buildRow('REGION', data.network?.location));
+                    m1.appendChild(buildRow('CARRIER NODE', data.network?.carrier));
                 } else if (type === 'username') {
-                    m1.innerHTML += `<div class="data-row"><span class="lbl">GITHUB:</span><span style="color:${data.accounts?.GitHub === 'FOUND' ? 'var(--neon)' : '#555'}">${data.accounts?.GitHub}</span></div>`;
-                    m1.innerHTML += `<div class="data-row"><span class="lbl">REDDIT:</span><span style="color:${data.accounts?.Reddit === 'FOUND' ? 'var(--neon)' : '#555'}">${data.accounts?.Reddit}</span></div>`;
+                    m1.appendChild(buildRow('GITHUB', data.accounts?.GitHub));
+                    m1.appendChild(buildRow('REDDIT', data.accounts?.Reddit));
                 }
-                db.appendChild(m1); setTimeout(() => m1.classList.add('show'), 200);
+                db.appendChild(m1);
+                
+                setTimeout(() => { 
+                    m1.classList.add('show'); playSnd(400, 0.2);
+                    m1.querySelectorAll('.decrypt-target').forEach(el => decryptText(el, el.getAttribute('data-val')));
+                }, 300);
 
                 // 2. BREACH MODULE
                 let m2 = document.createElement('div'); m2.className = 'module'; m2.style.borderLeftColor = 'var(--danger)';
-                m2.innerHTML = `<h4 style="margin:0 0 10px 0; color:var(--danger)">[ DARK_WEB_EXPOSURE ]</h4>`;
+                m2.innerHTML = `<h4 style="margin:0 0 10px 0; color:var(--danger); border-bottom:1px solid #222; padding-bottom:5px;">[ DARK_WEB_EXPOSURE ]</h4>`;
                 if(data.leaks && data.leaks.result && data.leaks.result.length > 0) {
-                    data.leaks.result.slice(0,6).forEach(l => m2.innerHTML += `<div style="font-size:10px; margin-top:5px; padding-bottom:5px; border-bottom:1px solid #222;">[!] ${l.line}</div>`);
-                    playSnd(200, 0.5);
+                    data.leaks.result.slice(0,5).forEach(l => {
+                        let r = document.createElement('div'); r.className = 'data-row'; r.style.color = '#aaa';
+                        r.onclick = () => copyData(r, l.line);
+                        r.innerHTML = `<span>[!] <span class="decrypt-target" data-val="${l.line}">0000</span></span>`;
+                        m2.appendChild(r);
+                    });
                 } else {
-                    m2.innerHTML += `<div style="font-size:11px; color:#555;">> NO EXPOSURES DETECTED IN KNOWN REPOSITORIES.</div>`;
+                    m2.innerHTML += `<div style="font-size:11px; color:#555; padding:10px 0;">> NO EXPOSURES DETECTED.</div>`;
                 }
-                db.appendChild(m2); setTimeout(() => m2.classList.add('show'), 400);
+                db.appendChild(m2);
+                setTimeout(() => { 
+                    m2.classList.add('show'); playSnd(300, 0.2, 'sawtooth');
+                    m2.querySelectorAll('.decrypt-target').forEach(el => decryptText(el, el.getAttribute('data-val')));
+                }, 800);
 
-                // 3. THE TRAP / DORK MODULE
+                // 3. ACTION MODULE
                 let m3 = document.createElement('div'); m3.className = 'module';
-                m3.innerHTML = `<h4 style="margin:0 0 5px 0; color:var(--neon)">[ ACTIVE_RECON_OPTIONS ]</h4>`;
-                m3.innerHTML += `<div style="font-size:10px; color:#777; margin-bottom:10px;">Deploy active counter-measures.</div>`;
-                m3.innerHTML += `<div class="btn" onclick="window.open('https://www.google.com/search?q=%22${data.target}%22')">GLOBAL_SEARCH_OVERRIDE</div>`;
-                m3.innerHTML += `<div class="btn" style="border-color:var(--danger); color:var(--danger);" onclick="tg.close()">GENERATE_TRAP_LINK (VIA BOT)</div>`;
-                db.appendChild(m3); setTimeout(() => m3.classList.add('show'), 600);
+                m3.innerHTML = `<h4 style="margin:0 0 5px 0; color:var(--neon)">[ TACTICAL_COMMANDS ]</h4>`;
+                m3.innerHTML += `<div class="btn" onclick="window.open('https://www.google.com/search?q=%22${data.target}%22')">GLOBAL_SCRAPE_OVERRIDE</div>`;
+                m3.innerHTML += `<div class="btn" style="border-color:var(--danger); color:var(--danger);" onclick="if(tg) tg.close()">GENERATE_TRAP_LINK</div>`;
+                db.appendChild(m3);
+                setTimeout(() => { m3.classList.add('show'); playSnd(500, 0.1); }, 1300);
 
-                log("DATA STREAM SECURED.");
-            } catch(e) { log("CRITICAL: UPLINK FAILED.", "red"); }
+                await typeLog("DATA STREAM DECRYPTED AND SECURED.");
+
+            } catch(e) { await typeLog(`CRITICAL: UPLINK FAILED.`, "red"); }
         }
     </script>
 </body>
