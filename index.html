@@ -8,20 +8,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         :root { --neon: #00ffcc; --bg: #000; --glass: rgba(0, 10, 5, 0.95); }
-        body { margin:0; background:var(--bg); color:#fff; font-family:monospace; overflow:hidden; height:100vh; width:100vw;}
-        #canvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; opacity:0.3;}
+        body { margin:0; background:var(--bg); color:#fff; font-family:monospace; overflow:hidden; height:100vh; width:100vw; }
+        #canvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; opacity:0.3; }
         
-        /* Kinetic Glitch Effect */
+        /* Kinetic Glitch Overlay */
         #noise { position:fixed; top:0; left:0; width:100%; height:100%; z-index:5; opacity:0; pointer-events:none; background: repeating-linear-gradient(0deg, rgba(0,255,204,0.05) 0px, transparent 1px); }
-        .ripping #noise { opacity: 0.3; animation: glitch 0.2s infinite; }
-        @keyframes glitch { 0% { transform: scale(1.01) translate(2px); } 50% { transform: scale(1) translate(-2px); } }
+        .ripping #noise { opacity: 0.3; animation: glitch 0.15s infinite; }
+        @keyframes glitch { 0% { opacity: 0.2; } 50% { opacity: 0.4; } 100% { opacity: 0.2; } }
 
         .interface { position: relative; z-index: 10; padding: 20px; height: 100vh; display: flex; flex-direction: column; max-width: 800px; margin: 0 auto; }
         .cluster { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
         .proto-btn { 
             background: rgba(0, 255, 204, 0.1); border: 1px solid var(--neon); color: var(--neon);
-            padding: 18px; font-size: 10px; letter-spacing: 2px; cursor: pointer; text-align: left;
-            clip-path: polygon(0% 0%, 90% 0%, 100% 30%, 100% 100%, 0% 100%);
+            padding: 16px; font-size: 10px; letter-spacing: 2px; cursor: pointer; text-align: left;
+            clip-path: polygon(0% 0%, 92% 0%, 100% 25%, 100% 100%, 0% 100%);
         }
         
         #stream { flex-grow: 1; overflow-y: auto; margin-top: 15px; scrollbar-width: none; }
@@ -30,27 +30,27 @@
         
         .row { display: flex; justify-content: space-between; font-size: 11px; padding: 6px 0; border-bottom: 1px dashed rgba(0, 255, 204, 0.2); }
         .val { color: var(--neon); font-weight: bold; }
-        .prov { font-size: 8px; color: var(--neon); opacity: 0.6; margin-top: 10px; }
+        .prov { font-size: 8px; color: var(--neon); opacity: 0.5; margin-top: 10px; border-top: 1px solid rgba(0,255,204,0.1); padding-top: 5px; }
 
-        .access-panel { border: 1px solid #ff3333; padding: 15px; margin-top: auto; text-align: center; background: rgba(255,0,0,0.05); }
+        .access-panel { border: 1px solid #ff3333; padding: 12px; margin-top: auto; margin-bottom: 15px; text-align: center; }
     </style>
 </head>
 <body>
     <div id="canvas"></div>
     <div id="noise"></div>
     <div class="interface">
-        <div style="letter-spacing:8px; color:var(--neon); font-size:10px; font-weight:900;">ARCHON INTELLIGENCE</div>
-        <div id="target-id" style="font-size:24px; margin: 10px 0;">TARGET: NULL</div>
+        <div style="letter-spacing:10px; color:var(--neon); font-size:9px; font-weight:900;">ARCHON INTELLIGENCE</div>
+        <div id="target-id" style="font-size:22px; margin: 10px 0;">TARGET: LOADING...</div>
 
         <div class="cluster">
-            <button class="proto-btn" onclick="triggerChain(target, 'username')">SINGULARITY RIP</button>
-            <button class="proto-btn" onclick="location.reload()">RESET SYSTEM</button>
+            <button class="proto-btn" onclick="autoRip()">SINGULARITY RIP</button>
+            <button class="proto-btn" onclick="location.reload()">RESET NODE</button>
         </div>
 
         <div id="stream"></div>
 
         <div class="access-panel" id="access-box" onclick="grantAccess()">
-            <div id="access-btn" style="color: #ff3333; font-size: 11px; font-weight: bold;">[ ESTABLISH SECURE UPLINK ]</div>
+            <div id="access-btn" style="color: #ff3333; font-size: 10px; font-weight: bold; cursor:pointer;">[ ESTABLISH SECURE UPLINK ]</div>
         </div>
     </div>
 
@@ -61,84 +61,82 @@
         const BACKEND = "https://archon-intelligence-backend.onrender.com"; 
         document.getElementById('target-id').innerText = target;
 
-        function speak(t) { const u = new SpeechSynthesisUtterance(t); u.rate = 1.2; window.speechSynthesis.speak(u); }
+        function speak(t) { const u = new SpeechSynthesisUtterance(t); u.rate = 1.1; window.speechSynthesis.speak(u); }
 
         function grantAccess() {
             window.authorized = true;
             document.getElementById('access-box').style.borderColor = "#00ffcc";
             document.getElementById('access-box').innerHTML = "<div style='color:#00ffcc; font-size:11px;'>UPLINK STATUS: SECURE</div>";
             tg.HapticFeedback.notificationOccurred('success');
-            speak("System access granted. Initializing Archon Intelligence.");
+            speak("Uplink secured. Ready for extraction.");
         }
 
-        async function triggerChain(node, proto) {
-            if(!window.authorized) return tg.showAlert("Establish Uplink First.");
-            
+        async function autoRip() {
+            if(!window.authorized) return tg.showAlert("Manual Uplink Required.");
+            let proto = target.includes('@') ? "email" : (target.match(/\d+\./) ? "ip" : "username");
+            executeChain(target, proto);
+        }
+
+        async function executeChain(node, proto) {
             document.body.classList.add('ripping');
-            coreSpeed = 0.1;
-            speak(`Ripping node: ${proto}`);
+            coreSpeed = 0.12; 
+            speak(`Ripping ${proto} node.`);
 
             try {
                 const res = await fetch(`${BACKEND}/api/scan?target=${node}&protocol=${proto}`);
                 const data = await res.json();
                 
-                renderCard(proto.toUpperCase() + "_DISCOVERY", data);
+                renderDetailedCard(proto.toUpperCase(), data);
 
-                // --- ⚡ THE CHAIN REACTION ---
                 if(data.next_seeds && data.next_seeds.length > 0) {
                     data.next_seeds.forEach(seed => {
-                        setTimeout(() => triggerChain(seed.t, seed.p), 3000);
+                        setTimeout(() => executeChain(seed.t, seed.p), 3500);
                     });
                 } else {
                     setTimeout(() => {
                         document.body.classList.remove('ripping');
                         coreSpeed = 0.005;
-                        speak("All nodes synthesized.");
+                        speak("Chain reaction complete.");
                     }, 2000);
                 }
-            } catch (e) {
-                document.body.classList.remove('ripping');
-                tg.showAlert("Uplink Timeout.");
-            }
+            } catch (e) { document.body.classList.remove('ripping'); }
         }
 
-        function renderCard(title, data) {
+        function renderDetailedCard(title, data) {
             const card = document.createElement('div');
             card.className = 'card';
-            let html = `<div style="color:var(--neon); font-size:9px; margin-bottom:10px; letter-spacing:2px;">[ ${title} ]</div>`;
-            card.innerHTML = html;
-            document.getElementById('stream').prepend(card);
-
-            // Ripping Data Rows
+            card.innerHTML = `<div style="color:var(--neon); font-size:9px; margin-bottom:8px; letter-spacing:2px;">[ ${title}_ANALYSIS ]</div>`;
+            
             Object.entries(data.payload).forEach(([k, v]) => {
                 const row = document.createElement('div');
                 row.className = 'row';
-                row.innerHTML = `<span>${k.toUpperCase()}</span><span class="val" id="rip-${title}-${k}">---</span>`;
+                row.innerHTML = `<span>${k.toUpperCase()}</span><span class="val" id="val-${title}-${k}">---</span>`;
                 card.appendChild(row);
-                decipherEffect(document.getElementById(`rip-${title}-${k}`), String(v));
+                decipherEffect(document.getElementById(`val-${title}-${k}`), String(v));
             });
 
-            // Exact Provenance (Hits & Sources)
             data.provenance.forEach(src => {
-                const prov = document.createElement('div');
-                prov.className = 'prov';
-                prov.innerText = `SRC: ${src.source} | HITS: ${src.hits} | ACCURACY: ${src.accuracy}`;
-                card.appendChild(prov);
+                const p = document.createElement('div');
+                p.className = 'prov';
+                p.innerText = `SOURCE: ${src.source} | HITS: ${src.hits} | CONFIDENCE: ${src.acc}`;
+                card.appendChild(p);
             });
+
+            document.getElementById('stream').prepend(card);
             tg.HapticFeedback.impactOccurred('heavy');
         }
 
         function decipherEffect(el, val) {
-            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*";
             let i = 0;
             const interval = setInterval(() => {
                 el.innerText = val.split("").map((c, idx) => idx < i ? val[idx] : chars[Math.floor(Math.random()*chars.length)]).join("");
                 if(i >= val.length) clearInterval(interval);
                 i += 1/3;
-            }, 40);
+            }, 35);
         }
 
-        // --- 🧊 3D CORE ---
+        // --- 🧊 THREE.JS CORE ---
         let coreSpeed = 0.005;
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
