@@ -10,24 +10,19 @@
         * { box-sizing: border-box; }
         body { margin:0; padding:0; background:var(--bg); color:var(--neon); font-family:'Courier New', monospace; overflow-x:hidden; user-select:none; }
         
-        /* Interactive Canvas */
         #network-canvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity: 0.6; }
         .scanlines { position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.25) 50%); background-size:100% 4px; pointer-events:none; z-index:9999; }
         
-        /* Glitch Text */
         .header { text-align:center; padding:20px; border-bottom:1px solid #222; background:rgba(2,2,2,0.9); position:relative; z-index:10; }
         .glitch { font-size:1.5rem; font-weight:bold; letter-spacing:4px; text-shadow:2px 0 red, -2px 0 blue; animation: g 3s infinite; }
         @keyframes g { 0%, 100% { transform:skew(0); opacity:1; } 5% { transform:skew(-5deg); opacity:0.8; } 10% { transform:skew(5deg); } }
 
-        /* Terminal Window */
         .terminal { background:rgba(0,0,0,0.8); border:1px solid #111; margin:15px; padding:15px; font-size:11px; height:120px; overflow-y:auto; color:#00ff41; box-shadow: inset 0 0 20px #000; border-radius: 4px; border-left: 2px solid var(--neon); }
         
-        /* Animated Modules */
         .module { background:var(--panel); border:1px solid #1a1a1a; border-left:3px solid var(--neon); margin:15px; padding:15px; opacity:0; transform:translateX(50px); transition:all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); border-radius: 0 8px 8px 0; box-shadow: 0 5px 25px rgba(0,255,65,0.05);}
         .module.show { opacity:1; transform:translateX(0); }
         .module:hover { border-left-width: 6px; background: rgba(10, 20, 10, 0.95); box-shadow: 0 5px 25px rgba(0,255,65,0.15); }
         
-        /* Interactive Data Rows */
         .data-row { border-bottom:1px dashed #222; padding:10px 0; font-size:12px; display:flex; justify-content:space-between; cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden;}
         .data-row::before { content: ''; position: absolute; left: -100%; top: 0; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(0,255,65,0.2), transparent); transition: 0.3s; }
         .data-row:hover::before { left: 100%; transition: 0.5s; }
@@ -38,21 +33,19 @@
         .val.found { color: var(--neon); text-shadow: 0 0 8px var(--neon); }
         .val.danger { color: var(--danger); text-shadow: 0 0 8px var(--danger); }
 
-        /* Cyber Buttons */
         .btn { position: relative; display:block; text-align:center; border:1px solid var(--neon); padding:14px; margin-top:15px; color:var(--neon); font-size:12px; cursor:pointer; font-weight:bold; background: transparent; transition: 0.3s; text-transform: uppercase; letter-spacing: 2px; overflow: hidden; }
         .btn:hover { background: rgba(0,255,65,0.1); box-shadow: 0 0 15px rgba(0,255,65,0.3); letter-spacing: 3px; }
         .btn:active { background:var(--neon); color:#000; transform: scale(0.95); }
 
-        /* Auth Screen / Radar */
-        #auth, #radar-screen { position:fixed; top:0; left:0; width:100%; height:100%; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; backdrop-filter: blur(8px); transition: 0.5s opacity;}
+        #auth, #radar-screen { position:fixed; top:0; left:0; width:100%; height:100%; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; backdrop-filter: blur(8px); transition: 0.3s opacity;}
         .core { width:100px; height:100px; border:2px dashed var(--neon); border-radius:50%; display:flex; align-items:center; justify-content:center; animation:spin 8s linear infinite; cursor: pointer; box-shadow: 0 0 30px rgba(0,255,65,0.2);}
         .core:hover { border-color: #fff; animation:spin 3s linear infinite; }
         @keyframes spin { 100% { transform:rotate(360deg); } }
         
-        /* Radar Animation */
         .radar { width: 120px; height: 120px; border-radius: 50%; border: 1px solid rgba(0,255,65,0.3); position: relative; overflow: hidden; }
         .radar::before { content: ''; position: absolute; top: 50%; left: 50%; width: 50%; height: 50%; background: linear-gradient(45deg, rgba(0,255,65,0) 50%, rgba(0,255,65,0.8) 100%); transform-origin: 0 0; animation: radarScan 2s linear infinite; }
         @keyframes radarScan { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
@@ -72,7 +65,6 @@
             <div id="progress-bar" style="height: 100%; width: 0%; background: var(--neon); transition: 0.2s;"></div>
         </div>
     </div>
-    <style>@keyframes blink { 50% { opacity: 0.5; } }</style>
 
     <div class="header" id="main-header" style="display:none;">
         <div class="glitch">ARCHON_CHRONOS</div>
@@ -88,11 +80,9 @@
         const target = p.get('target'), type = p.get('type'), uid = p.get('uid');
         const BACKEND = "https://archon-intelligence-backend.onrender.com";
 
-        // --- INTERACTIVE MOUSE CANVAS ---
         const canvas = document.getElementById('network-canvas'); const ctxC = canvas.getContext('2d');
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        let particlesArray = [];
-        let mouse = { x: null, y: null, radius: 100 }; // Mouse Interaction
+        let particlesArray = []; let mouse = { x: null, y: null, radius: 100 };
         
         window.addEventListener('mousemove', function(event) { mouse.x = event.x; mouse.y = event.y; });
         window.addEventListener('touchmove', function(event) { mouse.x = event.touches[0].clientX; mouse.y = event.touches[0].clientY; });
@@ -105,12 +95,9 @@
                 if(this.x > canvas.width || this.x < 0) this.speedX *= -1; 
                 if(this.y > canvas.height || this.y < 0) this.speedY *= -1; 
                 
-                // Interactive Mouse Collision
                 let dx = mouse.x - this.x; let dy = mouse.y - this.y;
                 let distance = Math.sqrt(dx*dx + dy*dy);
-                if (distance < mouse.radius) {
-                    this.x -= dx/20; this.y -= dy/20;
-                }
+                if (distance < mouse.radius) { this.x -= dx/20; this.y -= dy/20; }
             }
             draw() { ctxC.fillStyle = 'rgba(0,255,65,0.8)'; ctxC.beginPath(); ctxC.arc(this.x, this.y, this.size, 0, Math.PI*2); ctxC.fill(); }
         }
@@ -124,18 +111,13 @@
                     const dx = particlesArray[i].x - particlesArray[j].x; const dy = particlesArray[i].y - particlesArray[j].y;
                     const distance = Math.sqrt(dx*dx + dy*dy);
                     if(distance < 90) { 
-                        ctxC.beginPath(); 
-                        ctxC.strokeStyle = `rgba(0,255,65,${1 - distance/90})`; 
-                        ctxC.lineWidth = 1; 
-                        ctxC.moveTo(particlesArray[i].x, particlesArray[i].y); 
-                        ctxC.lineTo(particlesArray[j].x, particlesArray[j].y); 
-                        ctxC.stroke(); 
+                        ctxC.beginPath(); ctxC.strokeStyle = `rgba(0,255,65,${1 - distance/90})`; ctxC.lineWidth = 1; 
+                        ctxC.moveTo(particlesArray[i].x, particlesArray[i].y); ctxC.lineTo(particlesArray[j].x, particlesArray[j].y); ctxC.stroke(); 
                     }
                 }
             } requestAnimationFrame(animateParticles);
         } animateParticles();
 
-        // --- UI LOGIC ---
         async function typeLog(m, color="var(--neon)") {
             const l = document.getElementById('logs'); const d = document.createElement('div'); d.style.color = color; l.appendChild(d);
             let i = 0;
@@ -176,32 +158,41 @@
         }
 
         async function startRadar() {
-            // Hide Auth, Show Radar
-            document.getElementById('auth').style.opacity = '0';
-            setTimeout(() => { 
-                document.getElementById('auth').style.display = 'none'; 
-                const r = document.getElementById('radar-screen');
-                r.style.display = 'flex';
-                setTimeout(() => r.style.opacity = '1', 50);
-            }, 300);
+            document.getElementById('auth').style.display = 'none'; 
+            const r = document.getElementById('radar-screen');
+            r.style.display = 'flex'; r.style.opacity = '1';
 
-            // Fake Progress Bar & Fetch
             let p = 0; const pb = document.getElementById('progress-bar');
-            const progInt = setInterval(() => { p += Math.random() * 15; if(p > 90) p = 90; pb.style.width = p + '%'; }, 300);
+            const rt = document.getElementById('radar-text');
+            
+            const progInt = setInterval(() => { p += Math.random() * 25; if(p > 85) p = 85; pb.style.width = p + '%'; }, 100);
+
+            const wakeupTimeout = setTimeout(() => {
+                if(p <= 85) { rt.innerText = "WAKING UP SERVER (COLD START)..."; rt.style.color = "#ffcc00"; }
+            }, 4000);
 
             try {
-                const res = await fetch(`${BACKEND}/api/scan?target=${encodeURIComponent(target)}&type=${type}&uid=${uid}`);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
+                
+                const res = await fetch(`${BACKEND}/api/scan?target=${encodeURIComponent(target)}&type=${type}&uid=${uid}`, { signal: controller.signal });
+                clearTimeout(timeoutId); clearTimeout(wakeupTimeout);
+                
+                if (!res.ok) throw new Error("HTTP " + res.status);
                 const data = await res.json();
                 
-                clearInterval(progInt); pb.style.width = '100%'; document.getElementById('radar-text').innerText = "TARGET ACQUIRED";
+                clearInterval(progInt); pb.style.width = '100%'; 
+                rt.innerText = "TARGET ACQUIRED"; rt.style.color = "var(--neon)";
                 
                 setTimeout(() => {
-                    document.getElementById('radar-screen').style.opacity = '0';
-                    setTimeout(() => { document.getElementById('radar-screen').style.display = 'none'; loadDashboard(data); }, 500);
-                }, 800);
+                    r.style.opacity = '0';
+                    setTimeout(() => { r.style.display = 'none'; loadDashboard(data); }, 200);
+                }, 300); 
 
             } catch(e) {
-                clearInterval(progInt); document.getElementById('radar-text').innerText = "UPLINK FAILED"; document.getElementById('radar-text').style.color = "var(--danger)"; pb.style.background = "var(--danger)";
+                clearInterval(progInt); clearTimeout(wakeupTimeout);
+                rt.innerText = e.name === 'AbortError' ? "UPLINK TIMEOUT" : "UPLINK FAILED (CHECK BACKEND)"; 
+                rt.style.color = "var(--danger)"; pb.style.background = "var(--danger)";
             }
         }
 
@@ -215,17 +206,38 @@
             await typeLog("BYPASSING ENCRYPTION...");
             await typeLog("DATA STREAM DECRYPTED.");
 
-            // Module 1: The Database Memory Status
             let m0 = document.createElement('div'); m0.className = 'module';
             m0.innerHTML = `<h4 style="margin:0 0 10px 0; color:var(--neon); border-bottom:1px solid #222; padding-bottom:5px; letter-spacing:1px;">[ CHRONOS_MEMORY ]</h4>`;
             m0.appendChild(buildRow('DATABASE RECORD', data.db_status, 'found'));
             db.appendChild(m0);
             setTimeout(() => { m0.classList.add('show'); m0.querySelectorAll('.decrypt-target').forEach(el => decryptText(el, el.getAttribute('data-val'))); }, 100);
 
-            // Module 2: The Core Intel (Dynamic based on data)
+            // ---> THE PHANTOM ENUMERATOR VISUALIZER <---
+            if(data.profiles_found) {
+                let m_recon = document.createElement('div'); m_recon.className = 'module';
+                m_recon.innerHTML = `<h4 style="margin:0 0 10px 0; color:var(--danger); border-bottom:1px solid #222; padding-bottom:5px; letter-spacing:1px;">[ DEEP_WEB_ENUMERATION ]</h4>`;
+                
+                if (data.profiles_found.Status) {
+                    m_recon.appendChild(buildRow('GHOST STATUS', 'TARGET IS COMPLETELY DARK', 'danger'));
+                } else {
+                    for (const [platform, url] of Object.entries(data.profiles_found)) {
+                        m_recon.appendChild(buildRow(platform.toUpperCase(), 'DETECTED', 'found'));
+                        m_recon.innerHTML += `<div class="btn" style="border-color:#333; color:#aaa; margin-top: 5px; padding: 8px;" onclick="window.open('${url}')">OPEN ${platform.toUpperCase()}</div>`;
+                    }
+                }
+                db.appendChild(m_recon);
+                setTimeout(() => { m_recon.classList.add('show'); }, 300);
+            }
+
             let m1 = document.createElement('div'); m1.className = 'module';
             m1.innerHTML = `<h4 style="margin:0 0 10px 0; color:var(--neon); border-bottom:1px solid #222; padding-bottom:5px; letter-spacing:1px;">[ PRIMARY_INTEL ]</h4>`;
             
+            if(data.telegram?.id) { 
+                m1.appendChild(buildRow('TELEGRAM ID', data.telegram.id, 'found')); 
+                m1.appendChild(buildRow('ID LENGTH', data.telegram.format)); 
+                m1.appendChild(buildRow('EST. CREATION', data.telegram.est_creation, 'danger')); 
+            }
+
             if(data.ip) { m1.appendChild(buildRow('IP ADDRESS', data.ip)); }
             if(data.network?.isp) { m1.appendChild(buildRow('ISP', data.network.isp)); m1.appendChild(buildRow('CITY', data.network.city)); }
             if(data.corporate?.name) { m1.appendChild(buildRow('LEGAL ENTITY', data.corporate.name, 'found')); m1.appendChild(buildRow('DOMAIN', data.corporate.domain)); }
@@ -235,10 +247,9 @@
             
             if(m1.childElementCount > 1) {
                 db.appendChild(m1);
-                setTimeout(() => { m1.classList.add('show'); m1.querySelectorAll('.decrypt-target').forEach(el => decryptText(el, el.getAttribute('data-val'))); }, 400);
+                setTimeout(() => { m1.classList.add('show'); m1.querySelectorAll('.decrypt-target').forEach(el => decryptText(el, el.getAttribute('data-val'))); }, 500);
             }
 
-            // Module 3: Tactical Commands
             let m3 = document.createElement('div'); m3.className = 'module';
             m3.innerHTML = `<h4 style="margin:0 0 5px 0; color:var(--neon); letter-spacing:1px;">[ TACTICAL_COMMANDS ]</h4>`;
             
@@ -249,7 +260,7 @@
             
             m3.innerHTML += `<div class="btn" style="border-color:var(--danger); color:var(--danger);" onclick="if(tg) tg.close()">GENERATE TRAP LINK</div>`;
             db.appendChild(m3);
-            setTimeout(() => { m3.classList.add('show'); }, 700);
+            setTimeout(() => { m3.classList.add('show'); }, 800);
         }
     </script>
 </body>
