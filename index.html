@@ -1,88 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Archon Intelligence</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Archon Chronos</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --neon: #00ff41; --danger: #ff003c; --bg: #020202; --panel: rgba(10, 15, 10, 0.85); }
+        :root { --neon: #00ff41; --danger: #ff003c; --bg: #030303; --panel: rgba(5, 10, 5, 0.85); }
+        * { box-sizing: border-box; }
         body { margin:0; padding:0; background:var(--bg); color:var(--neon); font-family:'Courier New', monospace; overflow-x:hidden; user-select:none; }
         
-        /* Interactive Canvas Background */
-        #network-canvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity: 0.4; }
+        /* Interactive Canvas */
+        #network-canvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity: 0.6; }
+        .scanlines { position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.25) 50%); background-size:100% 4px; pointer-events:none; z-index:9999; }
         
-        /* THE FIX: Scanlines are now an isolated overlay */
-        .scanlines { position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.2) 50%); background-size:100% 4px; pointer-events:none; z-index:9999; }
-        
+        /* Glitch Text */
         .header { text-align:center; padding:20px; border-bottom:1px solid #222; background:rgba(2,2,2,0.9); position:relative; z-index:10; }
         .glitch { font-size:1.5rem; font-weight:bold; letter-spacing:4px; text-shadow:2px 0 red, -2px 0 blue; animation: g 3s infinite; }
         @keyframes g { 0%, 100% { transform:skew(0); opacity:1; } 5% { transform:skew(-5deg); opacity:0.8; } 10% { transform:skew(5deg); } }
 
-        .terminal { background:#050505; border:1px solid #111; margin:15px; padding:15px; font-size:11px; height:120px; overflow-y:auto; color:#00ff41; box-shadow: inset 0 0 15px #000; border-radius: 4px; }
+        /* Terminal Window */
+        .terminal { background:rgba(0,0,0,0.8); border:1px solid #111; margin:15px; padding:15px; font-size:11px; height:120px; overflow-y:auto; color:#00ff41; box-shadow: inset 0 0 20px #000; border-radius: 4px; border-left: 2px solid var(--neon); }
         
-        .module { background:var(--panel); border:1px solid #1a1a1a; border-left:3px solid var(--neon); margin:15px; padding:15px; opacity:0; transform:scale(0.95); transition:0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-radius: 0 8px 8px 0; box-shadow: 0 5px 15px rgba(0,255,65,0.05);}
-        .module.show { opacity:1; transform:scale(1); }
+        /* Animated Modules */
+        .module { background:var(--panel); border:1px solid #1a1a1a; border-left:3px solid var(--neon); margin:15px; padding:15px; opacity:0; transform:translateX(50px); transition:all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); border-radius: 0 8px 8px 0; box-shadow: 0 5px 25px rgba(0,255,65,0.05);}
+        .module.show { opacity:1; transform:translateX(0); }
+        .module:hover { border-left-width: 6px; background: rgba(10, 20, 10, 0.95); box-shadow: 0 5px 25px rgba(0,255,65,0.15); }
         
-        /* Interactive Rows */
-        .data-row { border-bottom:1px dashed #222; padding:10px 0; font-size:12px; display:flex; justify-content:space-between; cursor:pointer; transition:0.2s; position:relative; overflow:hidden;}
-        .data-row:hover { background:rgba(0, 255, 65, 0.1); padding-left:5px; }
+        /* Interactive Data Rows */
+        .data-row { border-bottom:1px dashed #222; padding:10px 0; font-size:12px; display:flex; justify-content:space-between; cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden;}
+        .data-row::before { content: ''; position: absolute; left: -100%; top: 0; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(0,255,65,0.2), transparent); transition: 0.3s; }
+        .data-row:hover::before { left: 100%; transition: 0.5s; }
+        .data-row:hover { background:rgba(0, 255, 65, 0.05); padding-left:8px; }
         .data-row:active { background:var(--neon); color:#000; }
-        .lbl { color:#555; font-weight: bold; pointer-events:none;}
+        .lbl { color:#666; font-weight: bold; pointer-events:none;}
         .val { font-weight: bold; text-align: right; word-break: break-all; max-width: 65%; pointer-events:none;}
+        .val.found { color: var(--neon); text-shadow: 0 0 8px var(--neon); }
+        .val.danger { color: var(--danger); text-shadow: 0 0 8px var(--danger); }
 
-        .profile-pic { width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--neon); display: block; margin: 10px auto; filter: contrast(1.2) sepia(1) hue-rotate(80deg); box-shadow: 0 0 15px var(--neon); animation: float 3s ease-in-out infinite;}
-        @keyframes float { 0%,100% {transform:translateY(0);} 50% {transform:translateY(-5px);} }
+        /* Cyber Buttons */
+        .btn { position: relative; display:block; text-align:center; border:1px solid var(--neon); padding:14px; margin-top:15px; color:var(--neon); font-size:12px; cursor:pointer; font-weight:bold; background: transparent; transition: 0.3s; text-transform: uppercase; letter-spacing: 2px; overflow: hidden; }
+        .btn:hover { background: rgba(0,255,65,0.1); box-shadow: 0 0 15px rgba(0,255,65,0.3); letter-spacing: 3px; }
+        .btn:active { background:var(--neon); color:#000; transform: scale(0.95); }
 
-        .btn { display:block; text-align:center; border:1px solid var(--neon); padding:12px; margin-top:15px; color:var(--neon); font-size:12px; cursor:pointer; font-weight:bold; background: rgba(0,255,65,0.05); transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;}
-        .btn:hover { background: rgba(0,255,65,0.2); box-shadow: 0 0 10px var(--neon); }
-        .btn:active { background:var(--neon); color:#000; transform: scale(0.98); }
-        
-        #auth { position:fixed; top:0; left:0; width:100%; height:100%; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; backdrop-filter: blur(5px); transition: 0.5s opacity;}
-        .core { width:90px; height:90px; border:2px dashed var(--neon); border-radius:50%; display:flex; align-items:center; justify-content:center; animation:spin 6s linear infinite; cursor: pointer; transition: 0.3s;}
-        .core:hover { transform: scale(1.1); box-shadow: 0 0 30px var(--neon); }
+        /* Auth Screen / Radar */
+        #auth, #radar-screen { position:fixed; top:0; left:0; width:100%; height:100%; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; backdrop-filter: blur(8px); transition: 0.5s opacity;}
+        .core { width:100px; height:100px; border:2px dashed var(--neon); border-radius:50%; display:flex; align-items:center; justify-content:center; animation:spin 8s linear infinite; cursor: pointer; box-shadow: 0 0 30px rgba(0,255,65,0.2);}
+        .core:hover { border-color: #fff; animation:spin 3s linear infinite; }
         @keyframes spin { 100% { transform:rotate(360deg); } }
         
-        .radar { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--neon); position: relative; margin: 0 auto 10px auto; overflow: hidden; }
-        .radar::before { content: ''; position: absolute; top: 50%; left: 50%; width: 50%; height: 50%; background: linear-gradient(45deg, transparent 50%, rgba(0,255,65,0.5) 100%); transform-origin: 0% 0%; animation: radar 2s linear infinite; }
-        @keyframes radar { 100% { transform: rotate(360deg); } }
+        /* Radar Animation */
+        .radar { width: 120px; height: 120px; border-radius: 50%; border: 1px solid rgba(0,255,65,0.3); position: relative; overflow: hidden; }
+        .radar::before { content: ''; position: absolute; top: 50%; left: 50%; width: 50%; height: 50%; background: linear-gradient(45deg, rgba(0,255,65,0) 50%, rgba(0,255,65,0.8) 100%); transform-origin: 0 0; animation: radarScan 2s linear infinite; }
+        @keyframes radarScan { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div class="scanlines"></div>
     <canvas id="network-canvas"></canvas>
 
-    <div id="auth" onclick="initiateSequence()">
-        <div class="glitch" style="margin-bottom:50px;">ARCHON_INTELLIGENCE</div>
-        <div class="core"><div style="width:25px; height:25px; background:var(--neon); border-radius:50%; box-shadow: 0 0 20px var(--neon); animation: pulse 1s infinite;"></div></div>
-        <div style="font-size:11px; margin-top:40px; letter-spacing:5px; opacity:0.8;">TAP TO AUTHORIZE</div>
+    <div id="auth" onclick="startRadar()">
+        <div class="glitch" style="margin-bottom:50px;">ARCHON_CHRONOS</div>
+        <div class="core"><div style="width:20px; height:20px; background:var(--neon); border-radius:50%; box-shadow: 0 0 30px var(--neon); animation: pulse 1s infinite;"></div></div>
+        <div style="font-size:11px; margin-top:40px; letter-spacing:5px; opacity:0.8;">TAP TO INITIATE UPLINK</div>
     </div>
 
-    <div class="header" id="main-header" style="display:none;">
+    <div id="radar-screen" style="display:none; opacity: 0;">
         <div class="radar"></div>
-        <div class="glitch">ARCHON_INTELLIGENCE</div>
-        <div style="font-size:9px; color:#555; margin-top:8px; letter-spacing: 2px;" id="target-display">AWAITING TARGET</div>
+        <div id="radar-text" style="margin-top: 30px; font-size: 12px; letter-spacing: 3px; color: var(--neon); animation: blink 1s infinite;">INTERROGATING TARGET...</div>
+        <div style="width: 200px; height: 2px; background: #222; margin-top: 20px; position: relative;">
+            <div id="progress-bar" style="height: 100%; width: 0%; background: var(--neon); transition: 0.2s;"></div>
+        </div>
+    </div>
+    <style>@keyframes blink { 50% { opacity: 0.5; } }</style>
+
+    <div class="header" id="main-header" style="display:none;">
+        <div class="glitch">ARCHON_CHRONOS</div>
+        <div style="font-size:9px; color:#555; margin-top:8px; letter-spacing: 2px;" id="target-display">UPLINK ACTIVE</div>
     </div>
 
     <div class="terminal" id="logs" style="display:none;"></div>
     <div id="dashboard"></div>
 
     <script>
-        let tg; try { tg = window.Telegram.WebApp; tg.expand(); } catch(e) {}
+        let tg; try { tg = window.Telegram.WebApp; tg.expand(); tg.ready(); } catch(e) {}
         const p = new URLSearchParams(window.location.search);
         const target = p.get('target'), type = p.get('type'), uid = p.get('uid');
         const BACKEND = "https://archon-intelligence-backend.onrender.com";
 
-        // --- INTERACTIVE BACKGROUND (PARTICLE NETWORK) ---
-        const canvas = document.getElementById('network-canvas');
-        const ctxC = canvas.getContext('2d');
+        // --- INTERACTIVE MOUSE CANVAS ---
+        const canvas = document.getElementById('network-canvas'); const ctxC = canvas.getContext('2d');
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
         let particlesArray = [];
+        let mouse = { x: null, y: null, radius: 100 }; // Mouse Interaction
+        
+        window.addEventListener('mousemove', function(event) { mouse.x = event.x; mouse.y = event.y; });
+        window.addEventListener('touchmove', function(event) { mouse.x = event.touches[0].clientX; mouse.y = event.touches[0].clientY; });
+        window.addEventListener('mouseout', function() { mouse.x = undefined; mouse.y = undefined; });
+
         class Particle {
-            constructor() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.size = Math.random()*2; this.speedX = (Math.random()-0.5)*0.5; this.speedY = (Math.random()-0.5)*0.5; }
-            update() { this.x += this.speedX; this.y += this.speedY; if(this.x > canvas.width || this.x < 0) this.speedX *= -1; if(this.y > canvas.height || this.y < 0) this.speedY *= -1; }
-            draw() { ctxC.fillStyle = 'rgba(0,255,65,0.5)'; ctxC.beginPath(); ctxC.arc(this.x, this.y, this.size, 0, Math.PI*2); ctxC.fill(); }
+            constructor() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.size = Math.random()*2 + 1; this.speedX = (Math.random()-0.5)*1; this.speedY = (Math.random()-0.5)*1; }
+            update() { 
+                this.x += this.speedX; this.y += this.speedY; 
+                if(this.x > canvas.width || this.x < 0) this.speedX *= -1; 
+                if(this.y > canvas.height || this.y < 0) this.speedY *= -1; 
+                
+                // Interactive Mouse Collision
+                let dx = mouse.x - this.x; let dy = mouse.y - this.y;
+                let distance = Math.sqrt(dx*dx + dy*dy);
+                if (distance < mouse.radius) {
+                    this.x -= dx/20; this.y -= dy/20;
+                }
+            }
+            draw() { ctxC.fillStyle = 'rgba(0,255,65,0.8)'; ctxC.beginPath(); ctxC.arc(this.x, this.y, this.size, 0, Math.PI*2); ctxC.fill(); }
         }
-        function initParticles() { for(let i=0; i<60; i++) particlesArray.push(new Particle()); }
+        for(let i=0; i<60; i++) particlesArray.push(new Particle());
+        
         function animateParticles() {
             ctxC.clearRect(0,0,canvas.width,canvas.height);
             for(let i=0; i<particlesArray.length; i++) {
@@ -90,32 +123,33 @@
                 for(let j=i; j<particlesArray.length; j++) {
                     const dx = particlesArray[i].x - particlesArray[j].x; const dy = particlesArray[i].y - particlesArray[j].y;
                     const distance = Math.sqrt(dx*dx + dy*dy);
-                    if(distance < 80) { ctxC.beginPath(); ctxC.strokeStyle = `rgba(0,255,65,${1 - distance/80})`; ctxC.lineWidth = 0.5; ctxC.moveTo(particlesArray[i].x, particlesArray[i].y); ctxC.lineTo(particlesArray[j].x, particlesArray[j].y); ctxC.stroke(); }
+                    if(distance < 90) { 
+                        ctxC.beginPath(); 
+                        ctxC.strokeStyle = `rgba(0,255,65,${1 - distance/90})`; 
+                        ctxC.lineWidth = 1; 
+                        ctxC.moveTo(particlesArray[i].x, particlesArray[i].y); 
+                        ctxC.lineTo(particlesArray[j].x, particlesArray[j].y); 
+                        ctxC.stroke(); 
+                    }
                 }
-            }
-            requestAnimationFrame(animateParticles);
-        }
-        initParticles(); animateParticles();
+            } requestAnimationFrame(animateParticles);
+        } animateParticles();
 
-        // --- TYPING TERMINAL EFFECT (NO AUDIO) ---
+        // --- UI LOGIC ---
         async function typeLog(m, color="var(--neon)") {
-            const l = document.getElementById('logs');
-            const d = document.createElement('div'); d.style.color = color;
-            l.appendChild(d);
+            const l = document.getElementById('logs'); const d = document.createElement('div'); d.style.color = color; l.appendChild(d);
             let i = 0;
             return new Promise(resolve => {
                 const int = setInterval(() => {
-                    d.innerHTML = `> [SYS] ${m.substring(0, i)}<span style="opacity:0.5">_</span>`;
+                    d.innerHTML = `> [SYS] ${m.substring(0, i)}<span style="opacity:0.8">█</span>`;
                     l.scrollTop = l.scrollHeight;
                     if(i++ >= m.length) { clearInterval(int); d.innerHTML = `> [SYS] ${m}`; resolve(); }
-                }, 15);
+                }, 10);
             });
         }
 
-        // --- DECRYPTION TEXT EFFECT ---
         function decryptText(element, finalString) {
-            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*";
-            let iterations = 0;
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*X"; let iterations = 0;
             const interval = setInterval(() => {
                 element.innerText = finalString.split("").map((letter, index) => {
                     if(index < iterations) return finalString[index];
@@ -126,96 +160,96 @@
             }, 30);
         }
 
-        // --- COPY TO CLIPBOARD INTERACTION (NO AUDIO) ---
-        function copyData(element, value) {
-            if(!value || value === 'N/A') return;
-            navigator.clipboard.writeText(value);
-            const originalHTML = element.innerHTML;
-            element.innerHTML = `<span style="color:#000; width:100%; text-align:center; font-weight:bold;">[ DATA COPIED ]</span>`;
-            element.style.background = "var(--neon)";
-            setTimeout(() => { element.innerHTML = originalHTML; element.style.background = ""; }, 800);
-        }
-
-        function buildRow(label, value) {
+        function buildRow(label, value, customClass="") {
             const cleanVal = value || 'N/A';
             const row = document.createElement('div'); row.className = 'data-row';
-            row.onclick = () => copyData(row, cleanVal);
-            row.innerHTML = `<span class="lbl">${label}:</span><span class="val decrypt-target" data-val="${cleanVal}">00000</span>`;
+            row.onclick = () => { 
+                navigator.clipboard.writeText(cleanVal); 
+                const o = row.innerHTML; 
+                row.innerHTML = `<span style="color:#000; width:100%; text-align:center; font-weight:bold; letter-spacing: 2px;">[ DATA_COPIED ]</span>`; 
+                row.style.background = "var(--neon)"; 
+                if(tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+                setTimeout(() => { row.innerHTML = o; row.style.background = ""; }, 800); 
+            };
+            row.innerHTML = `<span class="lbl">${label}:</span><span class="val decrypt-target ${customClass}" data-val="${cleanVal}">00000</span>`;
             return row;
         }
 
-        async function initiateSequence() {
-            // Screen vanishes the instant you touch it
+        async function startRadar() {
+            // Hide Auth, Show Radar
             document.getElementById('auth').style.opacity = '0';
-            setTimeout(() => { document.getElementById('auth').style.display = 'none'; }, 300);
-            
-            document.getElementById('main-header').style.display = 'block';
-            document.getElementById('logs').style.display = 'block';
-            document.getElementById('target-display').innerText = `TARGET: ${target}`;
+            setTimeout(() => { 
+                document.getElementById('auth').style.display = 'none'; 
+                const r = document.getElementById('radar-screen');
+                r.style.display = 'flex';
+                setTimeout(() => r.style.opacity = '1', 50);
+            }, 300);
 
-            await typeLog("ESTABLISHING SECURE HANDSHAKE...");
-            await typeLog(`INITIATING DEEP PACKET INSPECTION ON: ${target}`);
+            // Fake Progress Bar & Fetch
+            let p = 0; const pb = document.getElementById('progress-bar');
+            const progInt = setInterval(() => { p += Math.random() * 15; if(p > 90) p = 90; pb.style.width = p + '%'; }, 300);
 
             try {
                 const res = await fetch(`${BACKEND}/api/scan?target=${encodeURIComponent(target)}&type=${type}&uid=${uid}`);
                 const data = await res.json();
-                const db = document.getElementById('dashboard');
-
-                // 1. PRIMARY INTEL
-                let m1 = document.createElement('div'); m1.className = 'module';
-                m1.innerHTML = `<h4 style="margin:0 0 10px 0; color:var(--neon); border-bottom:1px solid #222; padding-bottom:5px;">[ PRIMARY_INTEL ]</h4>`;
                 
-                if(type === 'email') {
-                    if(data.avatar) m1.innerHTML += `<img src="${data.avatar}" class="profile-pic" onerror="this.style.display='none'">`;
-                    m1.appendChild(buildRow('REPUTATION', data.social?.reputation));
-                    if(data.dns && data.dns.length > 0) m1.appendChild(buildRow('MX SERVER', data.dns[0].data));
-                } else if (type === 'phone') {
-                    m1.appendChild(buildRow('REGION', data.network?.location));
-                    m1.appendChild(buildRow('CARRIER NODE', data.network?.carrier));
-                } else if (type === 'username') {
-                    m1.appendChild(buildRow('GITHUB', data.accounts?.GitHub));
-                    m1.appendChild(buildRow('REDDIT', data.accounts?.Reddit));
-                } else if (type === 'ip') {
-                    m1.appendChild(buildRow('ISP', data.network?.isp));
-                    m1.appendChild(buildRow('CITY', data.network?.city));
-                }
-                db.appendChild(m1);
+                clearInterval(progInt); pb.style.width = '100%'; document.getElementById('radar-text').innerText = "TARGET ACQUIRED";
                 
-                setTimeout(() => { 
-                    m1.classList.add('show'); 
-                    m1.querySelectorAll('.decrypt-target').forEach(el => decryptText(el, el.getAttribute('data-val')));
-                }, 300);
-
-                // 2. BREACH MODULE
-                let m2 = document.createElement('div'); m2.className = 'module'; m2.style.borderLeftColor = 'var(--danger)';
-                m2.innerHTML = `<h4 style="margin:0 0 10px 0; color:var(--danger); border-bottom:1px solid #222; padding-bottom:5px;">[ DARK_WEB_EXPOSURE ]</h4>`;
-                if(data.leaks && data.leaks.result && data.leaks.result.length > 0) {
-                    data.leaks.result.slice(0,5).forEach(l => {
-                        let r = document.createElement('div'); r.className = 'data-row'; r.style.color = '#aaa';
-                        r.onclick = () => copyData(r, l.line);
-                        r.innerHTML = `<span>[!] <span class="decrypt-target" data-val="${l.line}">0000</span></span>`;
-                        m2.appendChild(r);
-                    });
-                } else {
-                    m2.innerHTML += `<div style="font-size:11px; color:#555; padding:10px 0;">> NO EXPOSURES DETECTED.</div>`;
-                }
-                db.appendChild(m2);
-                setTimeout(() => { 
-                    m2.classList.add('show');
-                    m2.querySelectorAll('.decrypt-target').forEach(el => decryptText(el, el.getAttribute('data-val')));
+                setTimeout(() => {
+                    document.getElementById('radar-screen').style.opacity = '0';
+                    setTimeout(() => { document.getElementById('radar-screen').style.display = 'none'; loadDashboard(data); }, 500);
                 }, 800);
 
-                // 3. ACTION MODULE
-                let m3 = document.createElement('div'); m3.className = 'module';
-                m3.innerHTML = `<h4 style="margin:0 0 5px 0; color:var(--neon)">[ TACTICAL_COMMANDS ]</h4>`;
-                m3.innerHTML += `<div class="btn" onclick="window.open('https://www.google.com/search?q=%22${data.target}%22')">GLOBAL_SCRAPE_OVERRIDE</div>`;
-                m3.innerHTML += `<div class="btn" style="border-color:var(--danger); color:var(--danger);" onclick="if(tg) tg.close()">GENERATE_TRAP_LINK</div>`;
-                db.appendChild(m3);
-                setTimeout(() => { m3.classList.add('show'); }, 1300);
+            } catch(e) {
+                clearInterval(progInt); document.getElementById('radar-text').innerText = "UPLINK FAILED"; document.getElementById('radar-text').style.color = "var(--danger)"; pb.style.background = "var(--danger)";
+            }
+        }
 
-                await typeLog("DATA STREAM DECRYPTED AND SECURED.");
+        async function loadDashboard(data) {
+            document.getElementById('main-header').style.display = 'block';
+            document.getElementById('logs').style.display = 'block';
+            document.getElementById('target-display').innerText = `TARGET: ${target}`;
+            const db = document.getElementById('dashboard');
 
-            } catch(e) { await typeLog(`CRITICAL: UPLINK FAILED.`, "red"); }
+            await typeLog("ESTABLISHING SECURE CONNECTION...");
+            await typeLog("BYPASSING ENCRYPTION...");
+            await typeLog("DATA STREAM DECRYPTED.");
+
+            // Module 1: The Database Memory Status
+            let m0 = document.createElement('div'); m0.className = 'module';
+            m0.innerHTML = `<h4 style="margin:0 0 10px 0; color:var(--neon); border-bottom:1px solid #222; padding-bottom:5px; letter-spacing:1px;">[ CHRONOS_MEMORY ]</h4>`;
+            m0.appendChild(buildRow('DATABASE RECORD', data.db_status, 'found'));
+            db.appendChild(m0);
+            setTimeout(() => { m0.classList.add('show'); m0.querySelectorAll('.decrypt-target').forEach(el => decryptText(el, el.getAttribute('data-val'))); }, 100);
+
+            // Module 2: The Core Intel (Dynamic based on data)
+            let m1 = document.createElement('div'); m1.className = 'module';
+            m1.innerHTML = `<h4 style="margin:0 0 10px 0; color:var(--neon); border-bottom:1px solid #222; padding-bottom:5px; letter-spacing:1px;">[ PRIMARY_INTEL ]</h4>`;
+            
+            if(data.ip) { m1.appendChild(buildRow('IP ADDRESS', data.ip)); }
+            if(data.network?.isp) { m1.appendChild(buildRow('ISP', data.network.isp)); m1.appendChild(buildRow('CITY', data.network.city)); }
+            if(data.corporate?.name) { m1.appendChild(buildRow('LEGAL ENTITY', data.corporate.name, 'found')); m1.appendChild(buildRow('DOMAIN', data.corporate.domain)); }
+            if(data.imei?.tac) { m1.appendChild(buildRow('IMEI VALID', data.imei.valid ? 'TRUE' : 'FALSE', data.imei.valid ? 'found' : 'danger')); m1.appendChild(buildRow('TAC CODE', data.imei.tac)); }
+            if(data.cidr?.network) { m1.appendChild(buildRow('NETWORK IP', data.cidr.network)); m1.appendChild(buildRow('MAX HOSTS', data.cidr.hosts, 'found')); }
+            if(data.file_ext?.magic_bytes) { m1.appendChild(buildRow('EXTENSION', data.file_ext.extension)); m1.appendChild(buildRow('MAGIC BYTES', data.file_ext.magic_bytes, 'danger')); }
+            
+            if(m1.childElementCount > 1) {
+                db.appendChild(m1);
+                setTimeout(() => { m1.classList.add('show'); m1.querySelectorAll('.decrypt-target').forEach(el => decryptText(el, el.getAttribute('data-val'))); }, 400);
+            }
+
+            // Module 3: Tactical Commands
+            let m3 = document.createElement('div'); m3.className = 'module';
+            m3.innerHTML = `<h4 style="margin:0 0 5px 0; color:var(--neon); letter-spacing:1px;">[ TACTICAL_COMMANDS ]</h4>`;
+            
+            if (type === 'ip') {
+                m3.innerHTML += `<div class="btn" style="border-color:#ffcc00; color:#ffcc00;" onclick="window.open('https://www.shodan.io/host/${data.target}')">SHODAN IOT UPLINK</div>`;
+                m3.innerHTML += `<div class="btn" style="border-color:#b900ff; color:#b900ff;" onclick="window.open('https://iknowwhatyoudownload.com/en/peer/?ip=${data.target}')">TORRENT SWARM RECON</div>`;
+            }
+            
+            m3.innerHTML += `<div class="btn" style="border-color:var(--danger); color:var(--danger);" onclick="if(tg) tg.close()">GENERATE TRAP LINK</div>`;
+            db.appendChild(m3);
+            setTimeout(() => { m3.classList.add('show'); }, 700);
         }
     </script>
 </body>
