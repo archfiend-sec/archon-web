@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ARCHON HUD 2.0</title>
+    <title>ARCHON INTELLIGENCE</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
@@ -51,19 +51,19 @@
 </head>
 <body>
     <div id="boot-screen">
-        <div style="font-family:'Orbitron'; font-size:26px; font-weight:900; color:var(--c-cyan); letter-spacing:10px;">DIRECTORATE INITIALIZING</div>
+        <div style="font-family:'Orbitron'; font-size:26px; font-weight:900; color:var(--c-cyan); letter-spacing:10px;">ARCHON INTELLIGENCE</div>
     </div>
     
     <div id="canvas-container"></div>
     
     <div class="ui-layer">
-        <div class="archon-title">ARCHON DIRECTORATE</div>
+        <div class="archon-title">ARCHON INTELLIGENCE</div>
         
         <div class="target-box interactive">
             <div class="scanning-laser"></div>
             <div>
-                <div style="font-size:9px; color:#666;">SIGINT_TARGET_LOCK</div>
-                <div id="target-id" style="font-family:'Orbitron'; font-size:18px; color:var(--c-cyan);">AWAITING_TELEMETRY</div>
+                <div style="font-size:9px; color:#666;">TARGET_NODE</div>
+                <div id="target-id" style="font-family:'Orbitron'; font-size:18px; color:var(--c-cyan);">AWAITING_INPUT</div>
             </div>
             <div id="sys-status" style="font-size:9px; border:1px solid var(--c-cyan); padding:4px 8px; color:var(--c-cyan);">STANDBY</div>
         </div>
@@ -71,9 +71,9 @@
         <div class="progress-bar" id="prog-bar"></div>
         
         <div class="btn-grid interactive">
-            <div class="btn" onclick="start()">Engage Panopticon</div>
-            <div class="btn" onclick="location.reload()" style="border-color:#444; color:#666;">Wipe Grid</div>
-            <div class="btn" id="btn-report" onclick="downloadReport()">Extract Intel Dossier</div>
+            <div class="btn" onclick="start()">Execute Omni-Chain</div>
+            <div class="btn" onclick="location.reload()" style="border-color:#444; color:#666;">Purge</div>
+            <div class="btn" id="btn-report" onclick="downloadReport()">Download Tactical Report</div>
         </div>
         
         <div class="stream interactive" id="stream"></div>
@@ -97,15 +97,15 @@
         
         async function start() {
             if(busy || !target) return; busy = true; document.body.classList.add('hacking');
-            document.getElementById('sys-status').innerText = "TRACKING"; 
+            document.getElementById('sys-status').innerText = "EXTRACTING"; 
             document.getElementById('sys-status').style.borderColor = "var(--c-warn)";
             document.getElementById('sys-status').style.color = "var(--c-warn)";
-            log(`UPLINK ESTABLISHED: ${target}`, "var(--c-cyan)");
+            log(`STAGING_CHAIN: ${target}`, "var(--c-cyan)");
             execute(target, "initial");
         }
         
         async function execute(t, pr) {
-            let chat_str = `GRID_ROUTE::${pr.toUpperCase()}`;
+            let chat_str = `CALL_STACK::${pr.toUpperCase()}`;
             const chatter = setInterval(() => { log(`${chat_str} -> PKT_${Math.floor(Math.random()*9999)} -> OK`, "#444", "kern"); }, 120);
             
             try {
@@ -122,8 +122,8 @@
                 if(data.pivots && data.pivots.length > 0) setTimeout(() => execute(data.pivots[0].t, data.pivots[0].p), 400);
                 else { 
                     document.getElementById('prog-bar').style.width = '100%';
-                    log("SURVEILLANCE GRID LOCKED.", "var(--c-red)"); 
-                    document.getElementById('sys-status').innerText = "LOCKED"; 
+                    log("OMNI-CHAIN COMPLETE. ALL NODES VERIFIED.", "var(--c-red)"); 
+                    document.getElementById('sys-status').innerText = "SECURED"; 
                     document.getElementById('sys-status').style.borderColor = "var(--c-red)";
                     document.getElementById('sys-status').style.color = "var(--c-red)";
                     document.body.classList.remove('hacking'); 
@@ -138,7 +138,7 @@
             let h = `<div style="font-size:9px; color:var(--c-cyan); margin-bottom:8px; letter-spacing:1px; border-bottom: 1px solid #333; padding-bottom:4px;">[ ${title} ]</div>`;
             
             Object.entries(data.analysis).forEach(([k, v]) => {
-                const isAI = k.includes("Hypothesis");
+                const isAI = k.includes("Hypothesis") || k.includes("Briefing");
                 let cClass = '#ccc';
                 
                 if(String(v).includes("OPEN") || String(v).includes("EXPOSED") || String(v).includes("FLAGGED") || String(v).includes("CRITICAL") || String(v).includes("MALWARE") || String(v).includes("ORBITAL")) cClass = 'var(--c-red)';
@@ -157,7 +157,7 @@
                 if (String(v).startsWith("http")) { el.onclick = () => window.open(String(v), '_blank'); el.style.textDecoration = "underline"; } 
                 else { el.onclick = () => { navigator.clipboard.writeText(v); log("Copied to memory.", "var(--c-cyan)"); } }
                 
-                if(isAI = k.includes("Hypothesis")) { el.textContent = ""; let j=0; const t=setInterval(()=>{el.textContent+=v[j++];if(j>=v.length)clearInterval(t)},10); }
+                if(k.includes("Hypothesis") || k.includes("Briefing")) { el.textContent = ""; let j=0; const t=setInterval(()=>{el.textContent+=v[j++];if(j>=v.length)clearInterval(t)},10); }
                 else el.textContent = v;
             });
         }
@@ -165,7 +165,7 @@
         function downloadReport() {
             const blob = new Blob([JSON.stringify(masterReport, null, 2)], {type: "application/json"});
             const url = URL.createObjectURL(blob); const a = document.createElement('a');
-            a.href = url; a.download = `DOSSIER_${target}.json`;
+            a.href = url; a.download = `ARCHON_REPORT_${target.replace(/[^a-z0-9]/gi, '_')}.json`;
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         }
         
